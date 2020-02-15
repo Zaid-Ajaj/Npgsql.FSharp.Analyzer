@@ -17,7 +17,7 @@ let findSingleUser(userId: int) =
             return username
         })
 
-let findUsers(userId: int) = 
+let findUsers() = 
     Sql.host "localhost"
     |> Sql.connectFromConfig
     |> Sql.query "SELECT * FROM users"
@@ -29,3 +29,9 @@ let findUsers(userId: int) =
             let! user_id = Sql.readInt "user_id" row
             return (username, user_id)
         })
+
+let findNumberOfUsers() = 
+    Sql.host "localhost"
+    |> Sql.connectFromConfig
+    |> Sql.query "SELECT COUNT(*) FROM users"
+    |> Sql.executeNonQuery

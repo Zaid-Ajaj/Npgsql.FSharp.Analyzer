@@ -27,6 +27,19 @@ module SqlAnalysis =
     let readRange (r: range) : Range =
         (Position(r.Start.Line, r.Start.Column), Position(r.End.Line, r.End.Column))
 
+    let (|FuncName|_|) = function
+        | SynExpr.Ident ident -> Some (ident.idText)
+        | SynExpr.LongIdent(isOptional, longDotId, altName, range) ->
+            match longDotId with
+            | LongIdentWithDots(listOfIds, ranges) ->
+                let fullName =
+                    listOfIds
+                    |> List.map (fun id -> id.idText)
+                    |> String.concat "."
+                     
+                Some fullName
+        | _ -> None
+
     let (|Apply|_|) = function
         | SynExpr.App(atomicFlag, isInfix, funcExpr, argExpr, range) ->
             match funcExpr with
@@ -139,6 +152,14 @@ module SqlAnalysis =
 
                 let block = { blocks = blocks; range = readRange range }
                 [ block ]
+            | FuncName("Sql.executeNonQuery"|"Sql.executeNonQueryAsync") ->
+                    let blocks = [
+                        yield! findQuery funcExpr
+                        yield! findParameters funcExpr
+                    ]
+
+                    let block = { blocks = blocks; range = readRange range }
+                    [ block ]
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
