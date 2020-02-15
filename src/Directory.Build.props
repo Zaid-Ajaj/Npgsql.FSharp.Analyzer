@@ -1,0 +1,11 @@
+<Project>
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <IsTestProject>false</IsTestProject>
+        <!-- Sourcelink -->
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+  
+    </PropertyGroup>
+</Project>

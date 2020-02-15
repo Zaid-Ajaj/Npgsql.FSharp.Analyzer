@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Analyzer.fs" />
+        <Compile Include="Tests.fs" />
+        <Compile Include="Main.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/Npgsql.FSharp.Analyzer/Npgsql.FSharp.Analyzer.fsproj" />
+        <ProjectReference Include="..\examples\hashing\examples.fsproj" />
+    </ItemGroup>
+    <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

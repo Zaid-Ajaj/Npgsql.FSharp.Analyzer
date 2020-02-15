@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.FSharp" Version="1.19.0" />
+  </ItemGroup>
+
+</Project>
