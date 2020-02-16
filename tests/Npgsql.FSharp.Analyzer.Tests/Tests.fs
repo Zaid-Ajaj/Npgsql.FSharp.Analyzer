@@ -37,7 +37,7 @@ let tests =
             match context (find "../examples/hashing/syntacticAnalysis.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let operationBlocks = SyntacticAnalysis.findSqlBlocks context 
+                let operationBlocks = SyntacticAnalysis.findSqlBlocks context
                 Expect.equal 3 (List.length operationBlocks) "Found two operation blocks"
         }
 
@@ -48,7 +48,7 @@ let tests =
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
             |> ignore
-             
+
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
 
             let userColumns =
@@ -71,7 +71,7 @@ let tests =
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
             |> ignore
-             
+
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
 
             let query = "SELECT * FROM users"
@@ -117,7 +117,7 @@ let tests =
                 match messages with
                 | [ message ] ->
                     Expect.equal Severity.Warning message.Severity "The message is a warning"
-                    Expect.stringContains "Missing parameter 'active' of type 'bit'" message.Message "Error should say which parameter is not provided"
+                    Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
                 | _ ->
                     failwith "Expected only one error message"
         }
