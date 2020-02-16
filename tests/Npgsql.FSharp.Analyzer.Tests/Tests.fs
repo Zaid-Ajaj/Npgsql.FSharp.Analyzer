@@ -64,7 +64,6 @@ let tests =
                 Expect.equal 3 (List.length columns) "There are three columns"
         }
 
-
         test "SQL query analysis" {
             use db = createTestDatabase()
 
@@ -96,8 +95,29 @@ let tests =
                 let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
                 match messages with
                 | [ message ] ->
-                    Expect.equal Severity.Warning message.Severity "The message is an error"
+                    Expect.equal Severity.Warning message.Severity "The message is an warning"
                     Expect.stringContains message.Message "non_existent" "Message should contain the missing column name"
+                | _ ->
+                    failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: missing parameter" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/semanticAnalysis-missingParameter.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
+                match messages with
+                | [ message ] ->
+                    Expect.equal Severity.Warning message.Severity "The message is a warning"
+                    Expect.stringContains "Missing parameter 'active' of type 'bit'" message.Message "Error should say which parameter is not provided"
                 | _ ->
                     failwith "Expected only one error message"
         }

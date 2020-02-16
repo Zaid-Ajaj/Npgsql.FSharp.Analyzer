@@ -52,7 +52,7 @@ module SqlAnalysis =
                 for requiredParameter in requiredParameters do
                     if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
                     then
-                        let message = sprintf "Missing parameter %s:%s" requiredParameter.Name requiredParameter.DataType.Name
+                        let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
                         yield createWarning message queryParamsRange
 
                 for providedParam in queryParams do
