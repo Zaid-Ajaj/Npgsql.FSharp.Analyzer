@@ -3,7 +3,7 @@ module Postgres
 open Npgsql.FSharp
 open Npgsql.FSharp.OptionWorkflow
 
-let connectionString = "M dummy connection string"
+let connectionString = "Dummy connection string"
 
 let findSingleUser(userId: int) = 
     connectionString

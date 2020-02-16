@@ -7,8 +7,7 @@ open FSharp.Compiler.Range
 
 module SyntacticAnalysis =
 
-    let readRange (r: range) : Range =
-        (Position(r.Start.Line, r.Start.Column), Position(r.End.Line, r.End.Column))
+    let readRange (r: range) = r
 
     let (|FuncName|_|) = function
         | SynExpr.Ident ident -> Some (ident.idText)
@@ -69,7 +68,7 @@ module SyntacticAnalysis =
             then Some {
                 funcName = funcName
                 columnName = columnName
-                range = readRange constRange }
+                range = constRange }
             else
                 None
         | _ ->
@@ -121,7 +120,7 @@ module SyntacticAnalysis =
         | _ ->
             [ ]
 
-    let rec visitSyntacticExpression (expr: SynExpr) (range: Range) =
+    let rec visitSyntacticExpression (expr: SynExpr) (range: range) =
         match expr with
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             match argExpr with
@@ -156,8 +155,8 @@ module SyntacticAnalysis =
     and visitBinding (binding: SynBinding) : SqlOperation list =
         match binding with
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
-            visitSyntacticExpression expr (readRange range) 
-
+            visitSyntacticExpression expr range
+             
     let findSqlBlocks (ctx: Context) =
         let blocks = ResizeArray<SqlOperation>()
         match ctx.ParseTree with

@@ -240,7 +240,7 @@ module InformationSchema =
         conn.Open()
         conn
 
-    let extractParametersAndOutputColumns(connectionString, commandText, resultType, allParametersOptional, dbSchemaLookups : DbSchemaLookups) =
+    let extractParametersAndOutputColumns(connectionString, commandText, allParametersOptional, dbSchemaLookups : DbSchemaLookups) =
         use conn = openConnection(connectionString)
     
         use cmd = new NpgsqlCommand(commandText, conn)
