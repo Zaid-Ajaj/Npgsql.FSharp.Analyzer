@@ -1,28 +1,11 @@
-namespace BinaryDefense.FSharp.Analyzers
+namespace Npgsql.FSharp.Analyzers
 
 open FSharp.Analyzers.SDK
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Ast
 open FSharp.Compiler.Range
 
-type ColumnReadAttempt = {
-    funcName: string;
-    columnName: string;
-    range : Range
-}
-
-[<RequireQualifiedAccess>]
-type SqlAnalyzerBlock =
-    | Query of string * Range
-    | Parameters of {| parameter: string; range: Range |} list *  Range
-    | ReadingColumns of ColumnReadAttempt list
-
-type SqlOperation = {
-    blocks : SqlAnalyzerBlock list
-    range : Range 
-}
-
-module SqlAnalysis =
+module SyntacticAnalysis =
 
     let readRange (r: range) : Range =
         (Position(r.Start.Line, r.Start.Column), Position(r.End.Line, r.End.Column))
@@ -150,7 +133,7 @@ module SqlAnalysis =
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
-                let block = { blocks = blocks; range = readRange range }
+                let block = { blocks = blocks; range = readRange range; fileName = "" }
                 [ block ]
             | FuncName("Sql.executeNonQuery"|"Sql.executeNonQueryAsync") ->
                     let blocks = [
@@ -158,7 +141,7 @@ module SqlAnalysis =
                         yield! findParameters funcExpr
                     ]
 
-                    let block = { blocks = blocks; range = readRange range }
+                    let block = { blocks = blocks; range = readRange range; fileName = "" }
                     [ block ]
             | _ ->
                 [ ]
@@ -188,7 +171,9 @@ module SqlAnalysis =
                             match declaration with
                             | SynModuleDecl.Let(isRecursiveDef, bindings, range) ->
                                 for binding in bindings do
-                                    blocks.AddRange(visitBinding binding)
+                                    visitBinding binding
+                                    |> List.map (fun block -> { block with fileName = ctx.FileName })
+                                    |> blocks.AddRange
                             | _ ->
                                 ()
 
@@ -197,9 +182,3 @@ module SqlAnalysis =
 
         List.ofSeq blocks
 
-    [<Analyzer>]
-    let queryAnalyzer : Analyzer =
-        fun ctx ->
-            let sqlBlocks = findSqlBlocks ctx
-            let messages = [ ]
-            messages

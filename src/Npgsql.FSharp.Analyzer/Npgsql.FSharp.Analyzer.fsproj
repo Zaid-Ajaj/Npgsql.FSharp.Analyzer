@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netcoreapp3.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
-    <Title>BinaryDefense.FSharp.Analyzers.Hashing</Title>
-    <Description>Looks for insecure hashing functions</Description>
+    <Title>Npgsql.FSharp.Analyzer</Title>
+    <Description>Advanced embedded static analysis and type-checking for SQL code from F#</Description>
 
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -15,8 +15,12 @@
     
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="InformationSchema.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Library.fs" />
+    <Compile Include="SyntacticAnalysis.fs" />
+    <Compile Include="SqlAnalysis.fs" />
+    <Compile Include="SqlAnalyzer.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
