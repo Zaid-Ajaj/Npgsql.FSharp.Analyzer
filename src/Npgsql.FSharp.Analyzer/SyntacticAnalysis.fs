@@ -77,9 +77,15 @@ module SyntacticAnalysis =
     /// Detects `Sql.query {SQL}` pattern
     let (|SqlQuery|_|) = function
         | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range) ->
-            Some (query, readRange constRange)
+            Some (query, constRange)
         | _ ->
             None
+
+    let (|SqlStoredProcedure|_|) = function
+        | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), range) ->
+            Some (funcName, constRange)
+        | _ ->
+            None 
 
     let rec findQuery = function
         | SqlQuery (query, range) ->
@@ -89,11 +95,19 @@ module SyntacticAnalysis =
         | _ ->
             [ ]
 
+    let rec findFunc = function
+        | SqlStoredProcedure (funcName, range) ->
+            [ SqlAnalyzerBlock.StoredProcedure(funcName, range) ]
+        | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
+            [ yield! findFunc funcExpr; yield! findFunc argExpr ]
+        | _ ->
+            [ ]
+
     let rec findParameters = function
         | SqlParameters(parameters, range) ->
             let sqlParameters =
                 parameters
-                |> List.map (fun (name, range) -> {| parameter = name; range = range |})
+                |> List.map (fun (name, range) -> { parameter = name; range = range })
             [ SqlAnalyzerBlock.Parameters(sqlParameters, range) ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
@@ -129,24 +143,26 @@ module SyntacticAnalysis =
                 let blocks = [
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
+                    yield! findFunc funcExpr
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
-                let block = { blocks = blocks; range = readRange range; fileName = "" }
+                let block = { blocks = blocks; range = range; fileName = "" }
                 [ block ]
             | FuncName("Sql.executeNonQuery"|"Sql.executeNonQueryAsync") ->
                     let blocks = [
+                        yield! findFunc funcExpr
                         yield! findQuery funcExpr
                         yield! findParameters funcExpr
                     ]
 
-                    let block = { blocks = blocks; range = readRange range; fileName = "" }
+                    let block = { blocks = blocks; range = range; fileName = "" }
                     [ block ]
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
             [
-                yield! visitSyntacticExpression body (readRange range) 
+                yield! visitSyntacticExpression body range
                 for binding in bindings do yield! visitBinding binding
             ]
         | otherwise ->
@@ -180,4 +196,3 @@ module SyntacticAnalysis =
             ()
 
         List.ofSeq blocks
-

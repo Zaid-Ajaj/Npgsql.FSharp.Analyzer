@@ -67,7 +67,7 @@ module SqlAnalysis =
             ]
 
             missingParameters
-        
+
     let analyzeBlock (operation: SqlOperation) (connectionString: string) : Message list =
         match findQuery operation with
         | None ->

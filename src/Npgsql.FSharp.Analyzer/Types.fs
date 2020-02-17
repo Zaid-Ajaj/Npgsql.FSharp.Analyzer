@@ -1,6 +1,5 @@
 namespace Npgsql.FSharp.Analyzers
 
-open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.Range
 
 type ColumnReadAttempt = {
@@ -9,10 +8,16 @@ type ColumnReadAttempt = {
     range : range
 }
 
+type UsedParameter = {
+    parameter : string
+    range : range 
+}
+
 [<RequireQualifiedAccess>]
 type SqlAnalyzerBlock =
     | Query of string * range
-    | Parameters of {| parameter: string; range: range |} list *  range
+    | StoredProcedure of string * range
+    | Parameters of UsedParameter list *  range
     | ReadingColumns of ColumnReadAttempt list
 
 type SqlOperation = {

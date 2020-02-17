@@ -467,6 +467,28 @@ Target.create "BuildDocs" buildDocs
 Target.create "WatchDocs" watchDocs
 Target.create "ReleaseDocs" releaseDocs
 
+Target.create "PublishAnalyzer" <| fun _ ->
+    let publishExitCode = Shell.Exec("dotnet", "publish -c Release --framework netstandard2.0", "src" </> "Npgsql.FSharp.Analyzer")
+
+    if publishExitCode <> 0 then
+        failwith "Could not run `dotnet publish`"
+    else
+        let compiledAssemblies =
+            !! "src/Npgsql.FSharp.Analyzer/bin/Release/netstandard2.0/publish/**/*.dll"
+            |> String.concat " "
+            |> sprintf "/out:Npgsql.FSharp.Merged.Analyzer.dll /allowDup /log /ndebug %s"
+
+        let workingDir = "src" </> "Npgsql.FSharp.Analyzer" </> "bin" </> "Release" </> "netstandard2.0" </> "publish"
+        let fileName = "ilmerge" </> "tools" </> "net452" </> "ILMerge.exe"
+
+        let mergeResult = Shell.Exec(fileName, compiledAssemblies, workingDir)
+        if mergeResult <> 0 then
+            failwith "Could not merge the analyzer assembly"
+        else
+            let output = "Npgsql.FSharp.Merged.Analyzer.dll"
+            Shell.copyFile ("dist" </> output) (workingDir </> output)
+            printfn "Merging was succesful"
+
 //-----------------------------------------------------------------------------
 // Target Dependencies
 //-----------------------------------------------------------------------------
@@ -476,6 +498,7 @@ Target.create "ReleaseDocs" releaseDocs
 // Ensure Clean is called before DotnetRestore
 "Clean" ?=> "DotnetRestore"
 "Clean" ==> "DotnetPack"
+"Clean" ==> "DotnetRestore" ==> "PublishAnalyzer"
 
 // Only call AssemblyInfo if Publish was in the call chain
 // Ensure AssemblyInfo is called after DotnetRestore and before DotnetBuild

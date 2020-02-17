@@ -1,6 +1,6 @@
-# BinaryDefense.FSharp.Analyzers
+# Npgsql.FSharp.Analyzer
 
-[Enter useful description for BinaryDefense.FSharp.Analyzers]
+Analyzer that provides advanced embedded SQL static analysis when using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). Checks syntax of the used queries and performs type-checking of the provided parameters as well as the types of the columns that were read.
 
 ---
 
@@ -9,9 +9,9 @@
 macOS/Linux | Windows
 --- | ---
 [![Travis Badge](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers.svg?branch=master)](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers) | [![Build status](https://ci.appveyor.com/api/projects/status/github/TheAngryByrd/BinaryDefense.FSharp.Analyzers?svg=true)](https://ci.appveyor.com/project/TheAngryByrd/BinaryDefense.FSharp.Analyzers)
-[![Build History](https://buildstats.info/travisci/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers/builds) | [![Build History](https://buildstats.info/appveyor/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://ci.appveyor.com/project/TheAngryByrd/BinaryDefense.FSharp.Analyzers)  
+[![Build History](https://buildstats.info/travisci/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers/builds) | [![Build History](https://buildstats.info/appveyor/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://ci.appveyor.com/project/TheAngryByrd/BinaryDefense.FSharp.Analyzers)
 
-## NuGet 
+## NuGet
 
 Package | Stable | Prerelease
 --- | --- | ---

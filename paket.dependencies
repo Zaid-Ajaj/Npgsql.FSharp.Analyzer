@@ -14,6 +14,7 @@ nuget FSharp.Compiler.Service 33.0.0
 
 nuget Npgsql
 nuget ThrowawayDb.Postgres
+nuget Npgsql.FSharp
 // [ FAKE GROUP ]
 group Build
     storage: none

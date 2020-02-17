@@ -38,7 +38,7 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlBlocks context
-                Expect.equal 3 (List.length operationBlocks) "Found two operation blocks"
+                Expect.equal 4 (List.length operationBlocks) "Found four operation blocks"
         }
 
         test "SQL schema analysis" {
@@ -78,6 +78,54 @@ let tests =
             let parameters, outputColumns, enums = InformationSchema.extractParametersAndOutputColumns(db.ConnectionString, query, false, databaseMetadata)
             Expect.isEmpty parameters "Query contains no parameters"
             Expect.equal 3 (List.length outputColumns) "There are 3 columns in users table"
+        }
+
+        test "SQL scalar query analysis" {
+            use db = createTestDatabase()
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
+            let query = "SELECT COUNT(*) FROM users"
+            let resultSetMetadata = SqlAnalysis.extractParametersAndOutputColumns(db.ConnectionString, query, databaseMetadata)
+            match resultSetMetadata with
+            | Result.Error errorMsg ->
+                failwithf "Could not analyse result set metadata %s" errorMsg
+            | Result.Ok (parameters, outputColumns) ->
+                Expect.isEmpty parameters "Query shouldn't contain any parameters"
+                Expect.equal 1 outputColumns.Length "There is one column returned"
+        }
+
+        test "SQL function analysis" {
+            use db = createTestDatabase()
+
+            let createFuncQuery = """
+            CREATE FUNCTION Increment(val integer) RETURNS integer AS $$
+            BEGIN
+            RETURN val + 1;
+            END; $$
+            LANGUAGE PLPGSQL;
+            """
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query createFuncQuery
+            |> Sql.executeNonQuery
+            |> ignore
+
+            let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
+            let query = "SELECT Increment(@Input)"
+            let resultSetMetadata = SqlAnalysis.extractParametersAndOutputColumns(db.ConnectionString, query, databaseMetadata)
+            match resultSetMetadata with
+            | Result.Error errorMsg ->
+                failwithf "Could not analyse result set metadata %s" errorMsg
+            | Result.Ok (parameters, outputColumns) ->
+                Expect.equal 1 parameters.Length "Query has one parameter"
+                Expect.equal "integer" parameters.[0].DataType.Name "The parameter is int4"
+                Expect.equal 1 outputColumns.Length "There is one column returned"
+                Expect.equal "integer" outputColumns.[0].DataType.Name "The output type is int4"
         }
 
         test "SQL query semantic analysis: missing column" {

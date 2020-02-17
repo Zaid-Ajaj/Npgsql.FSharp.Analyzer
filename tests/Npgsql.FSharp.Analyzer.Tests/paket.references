@@ -6,3 +6,4 @@ YoloDev.Expecto.TestSdk
 altcover
 Microsoft.NETFramework.ReferenceAssemblies
 ThrowawayDb.Postgres
+Npgsql.FSharp
