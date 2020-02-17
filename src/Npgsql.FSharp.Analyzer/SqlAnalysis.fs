@@ -2,6 +2,7 @@ namespace Npgsql.FSharp.Analyzers
 
 open FSharp.Analyzers.SDK
 open FSharp.Compiler.Range
+open F23.StringSimilarity
 
 module SqlAnalysis =
     let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
@@ -57,25 +58,34 @@ module SqlAnalysis =
                 [ ]
 
         | Some (queryParams, queryParamsRange) ->
-            let missingParameters = [
-                for requiredParameter in requiredParameters do
-                    if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
-                    then
-                        let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
-                        yield createWarning message queryParamsRange
+            if List.isEmpty requiredParameters then
+                [ createWarning "Provided parameters are redundant. Sql query is not parameterized" operation.range ]
+            else 
+                let missingParameters = [
+                    for requiredParameter in requiredParameters do
+                        if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
+                        then
+                            let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
+                            yield createWarning message queryParamsRange
 
-                for providedParam in queryParams do
-                    if not (requiredParameters |> List.exists (fun p -> p.Name = providedParam.parameter.TrimStart('@')))
-                    then
-                        let expectedParameters =
-                            requiredParameters
-                            |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
-                            |> String.concat ", "
-                            |> sprintf "Required parameters are [%s]."
-                        yield createWarning (sprintf "Unexpected parameter %s is provided. %s" providedParam.parameter expectedParameters) providedParam.range
-            ]
+                    for providedParam in queryParams do
+                        if not (requiredParameters |> List.exists (fun p -> p.Name = providedParam.parameter.TrimStart('@')))
+                        then
+                            let levenshtein = new NormalizedLevenshtein()
+                            let closestAlternative =
+                                requiredParameters
+                                |> List.minBy (fun parameter -> levenshtein.Distance(parameter.Name, providedParam.parameter))
+                                |> fun parameter -> parameter.Name
+                                 
+                            let expectedParameters =
+                                requiredParameters
+                                |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
+                                |> String.concat ", "
+                                |> sprintf "Required parameters are [%s]."
+                            yield createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.parameter closestAlternative expectedParameters) providedParam.range
+                ]
 
-            missingParameters
+                missingParameters
 
     let findColumn (name: string) (availableColumns: InformationSchema.Column list) =
         availableColumns
@@ -83,16 +93,21 @@ module SqlAnalysis =
 
     let formatColumns (availableColumns: InformationSchema.Column list) =
         availableColumns
-        |> List.map (fun column -> sprintf "%s:%s" column.Name column.DataType.Name)
-        |> String.concat ", "
-        |> sprintf "[%s]"
+        |> List.map (fun column -> sprintf "| -- %s of type %s" column.Name column.DataType.Name)
+        |> String.concat "\n"
 
     let analyzeColumnReadingAttempts (columnReadAttempts: ColumnReadAttempt list) (availableColumns: InformationSchema.Column list) =
         [
             for attempt in columnReadAttempts do
                 match findColumn attempt.columnName availableColumns with
                 | None ->
-                    let warningMsg = sprintf "Attempting to value read column named '%s' that was not returned by the result set. Use one of the following: %s" attempt.columnName (formatColumns availableColumns)
+                    let levenshtein = new NormalizedLevenshtein()
+                    let closestAlternative =
+                        availableColumns
+                        |> List.minBy (fun column -> levenshtein.Distance(attempt.columnName, column.Name))
+                        |> fun column -> column.Name
+
+                    let warningMsg = sprintf "Attempting to read column named '%s' that was not returned by the result set. Did you mean to read '%s'?\nAvailable columns from the result set are:\n%s" attempt.columnName closestAlternative (formatColumns availableColumns)
                     yield createWarning warningMsg attempt.funcCallRange
 
                 | Some column ->
