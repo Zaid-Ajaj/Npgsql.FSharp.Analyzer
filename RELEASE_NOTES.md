@@ -1,2 +1,2 @@
-#### 0.1.0 - 2017-03-17
-* Initial release
+#### 1.0.0 - 2020-02-17
+* Initial release with working SQL analysis including syntax and type-checking

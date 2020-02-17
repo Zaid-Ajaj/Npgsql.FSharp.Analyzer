@@ -1,0 +1,6 @@
+Expecto
+FSharp.Core
+dotnet-mono
+altcover
+ThrowawayDb.Postgres
+Npgsql.FSharp

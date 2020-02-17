@@ -95,17 +95,7 @@ src/MyCoolNewLib/bin/
 - [`Release`](#Releasing) - Task that runs all release type tasks such as `PublishToNuGet`, `GitRelease`, `ReleaseDocs`, and `GitHubRelease`. Make sure to read [Releasing](#Releasing) to setup your environment correctly for releases.
 ---
 
-
 ### Releasing
-
-- [Start a git repo with a remote](https://help.github.com/articles/adding-an-existing-project-to-github-using-the-command-line/)
-
-```sh
-git add .
-git commit -m "Scaffold"
-git remote add origin https://github.com/user/MyCoolNewLib.git
-git push -u origin master
-```
 
 - [Add your NuGet API key to paket](https://fsprojects.github.io/Paket/paket-config.html#Adding-a-NuGet-API-key)
 

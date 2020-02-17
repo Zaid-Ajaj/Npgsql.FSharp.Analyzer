@@ -7,11 +7,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C397A34C-84F
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{ACBEE43C-7A88-4FB1-9B06-DB064D22B29F}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Npgsql.FSharp.Analyzer.Tests", "tests\Npgsql.FSharp.Analyzer.Tests\Npgsql.FSharp.Analyzer.Tests.fsproj", "{1CA2E092-2320-451D-A4F0-9ED7C7C528CA}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "NpgsqlFSharpAnalyzer.Tests", "tests\NpgsqlFSharpAnalyzer.Tests\NpgsqlFSharpAnalyzer.Tests.fsproj", "{1CA2E092-2320-451D-A4F0-9ED7C7C528CA}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "docsTool", "docsTool\docsTool.fsproj", "{8855EC73-F6A1-43D3-AFBC-04A3E09F9BD9}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Npgsql.FSharp.Analyzer", "src\Npgsql.FSharp.Analyzer\Npgsql.FSharp.Analyzer.fsproj", "{AAFC4496-746A-44AC-A4B1-CECC4ADED6CD}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "NpgsqlFSharpAnalyzer", "src\NpgsqlFSharpAnalyzer\NpgsqlFSharpAnalyzer.fsproj", "{AAFC4496-746A-44AC-A4B1-CECC4ADED6CD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{4CA3F686-DFAB-4AAF-8004-4158E18EF24E}"
 EndProject

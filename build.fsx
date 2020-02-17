@@ -43,8 +43,8 @@ let environVarAsBoolOrDefault varName defaultValue =
 // Metadata and Configuration
 //-----------------------------------------------------------------------------
 
-let productName = "Npgsql.FSharp.Analyzer"
-let sln = "Npgsql.FSharp.Analyzer.sln"
+let productName = "NpgsqlFSharpAnalyzer"
+let sln = "NpgsqlFSharpAnalyzer.sln"
 
 
 let srcCodeGlob =
@@ -73,17 +73,9 @@ let docsDir = __SOURCE_DIRECTORY__  @@ "docs"
 let docsSrcDir = __SOURCE_DIRECTORY__  @@ "docsSrc"
 let docsToolDir = __SOURCE_DIRECTORY__ @@ "docsTool"
 
-let gitOwner = "TheAngryByrd"
-let gitRepoName = "BinaryDefense.FSharp.Analyzers"
-
-let gitHubRepoUrl = sprintf "https://github.com/%s/%s" gitOwner gitRepoName
-
-let releaseBranch = "master"
 let releaseNotes = Fake.Core.ReleaseNotes.load "RELEASE_NOTES.md"
 
 let publishUrl = "https://www.nuget.org"
-
-let docsSiteBaseUrl = sprintf "https://%s.github.io/%s" gitOwner gitRepoName
 
 let disableCodeCoverage = environVarAsBoolOrDefault "DISABLE_COVERAGE" true
 
@@ -123,10 +115,6 @@ let rec retryIfInCI times fn =
             fn()
     | _ -> fn()
 
-let isReleaseBranchCheck () =
-    if Git.Information.getBranchName "" <> releaseBranch then failwithf "Not on %s.  If you want to release please switch to this branch." releaseBranch
-
-
 module dotnet =
     let watch cmdParam program args =
         DotNet.exec cmdParam (sprintf "watch %s" program) args
@@ -153,12 +141,9 @@ module DocsTool =
     let buildparser = ArgumentParser.Create<BuildArgs>(programName = "docstool")
     let buildCLI =
         [
-            BuildArgs.SiteBaseUrl docsSiteBaseUrl
             BuildArgs.ProjectGlob srcGlob
             BuildArgs.DocsOutputDirectory docsDir
             BuildArgs.DocsSourceDirectory docsSrcDir
-            BuildArgs.GitHubRepoUrl gitHubRepoUrl
-            BuildArgs.ProjectName gitRepoName
             BuildArgs.ReleaseVersion releaseNotes.NugetVersion
         ]
         |> buildparser.PrintCommandLineArgumentsFlat
@@ -174,8 +159,6 @@ module DocsTool =
         [
             WatchArgs.ProjectGlob srcGlob
             WatchArgs.DocsSourceDirectory docsSrcDir
-            WatchArgs.GitHubRepoUrl gitHubRepoUrl
-            WatchArgs.ProjectName gitRepoName
             WatchArgs.ReleaseVersion releaseNotes.NugetVersion
         ]
         |> watchparser.PrintCommandLineArgumentsFlat
@@ -239,24 +222,9 @@ let dotnetBuild ctx =
         }) sln
 
 let dotnetTest ctx =
-    let excludeCoverage =
-        !! testsGlob
-        |> Seq.map IO.Path.GetFileNameWithoutExtension
-        |> String.concat "|"
-    let args =
-        [
-            sprintf "/p:AltCover=%b" (not disableCodeCoverage)
-            sprintf "/p:AltCoverThreshold=%d" coverageThresholdPercent
-            sprintf "/p:AltCoverAssemblyExcludeFilter=%s" excludeCoverage
-        ]
-    DotNet.test(fun c ->
-
-        { c with
-            Configuration = configuration (ctx.Context.AllExecutingTargets)
-            Common =
-                c.Common
-                |> DotNet.Options.withAdditionalArgs args
-            }) sln
+    let testResult = Shell.Exec("dotnet", "run", "tests" </> "NpgsqlFSharpAnalyzer.Tests")
+    if testResult <> 0
+    then failwith "Tests failed"
 
 let generateCoverageReport _ =
     let coverageReports =
@@ -343,78 +311,31 @@ let generateAssemblyInfo _ =
 let dotnetPack ctx =
     let args =
         [
+            "pack"
+            "--configuration Release"
             sprintf "/p:PackageVersion=%s" releaseNotes.NugetVersion
-            sprintf "/p:PackageReleaseNotes=\"%s\"" (releaseNotes.Notes |> String.concat "\n")
+            sprintf "/p:PackageReleaseNotes=\"%s\"" (String.concat "\n" releaseNotes.Notes)
+            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
         ]
-    DotNet.pack (fun c ->
-        { c with
-            Configuration = configuration (ctx.Context.AllExecutingTargets)
-            OutputPath = Some distDir
-            Common =
-                c.Common
-                |> DotNet.Options.withAdditionalArgs args
-        }) sln
 
-let sourceLinkTest _ =
-    !! distGlob
-    |> Seq.iter (fun nupkg ->
-        dotnet.sourcelink id (sprintf "test %s" nupkg)
-    )
+    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "NpgsqlFSharpAnalyzer")
+    if exitCode <> 0
+    then failwith "dotnet pack failed"
 
 let publishToNuget _ =
-    isReleaseBranchCheck ()
-    Paket.push(fun c ->
-        { c with
-            ToolType = ToolType.CreateLocalTool()
-            PublishUrl = publishUrl
-            WorkingDir = "dist"
-        }
-    )
+    let nugetKey =
+        match Environment.environVarOrNone "NUGET_KEY" with
+        | Some nugetKey -> nugetKey
+        | None -> failwith "The Nuget API key must be set in a NUGET_KEY environmental variable"
 
-let gitRelease _ =
-    isReleaseBranchCheck ()
+    let nupkg =
+        System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
+        |> Seq.head
+        |> IO.Path.GetFullPath
 
-    let releaseNotesGitCommitFormat = releaseNotes.Notes |> Seq.map(sprintf "* %s\n") |> String.concat ""
-
-    Git.Staging.stageAll ""
-    Git.Commit.exec "" (sprintf "Bump version to %s \n%s" releaseNotes.NugetVersion releaseNotesGitCommitFormat)
-    Git.Branches.push ""
-
-    Git.Branches.tag "" releaseNotes.NugetVersion
-    Git.Branches.pushTag "" "origin" releaseNotes.NugetVersion
-
-let githubRelease _ =
-    let token =
-        match Environment.environVarOrDefault "GITHUB_TOKEN" "" with
-        | s when not (String.IsNullOrWhiteSpace s) -> s
-        | _ -> failwith "please set the github_token environment variable to a github personal access token with repro access."
-
-    let files = !! distGlob
-
-    GitHub.createClientWithToken token
-    |> GitHub.draftNewRelease gitOwner gitRepoName releaseNotes.NugetVersion (releaseNotes.SemVer.PreRelease <> None) releaseNotes.Notes
-    |> GitHub.uploadFiles files
-    |> GitHub.publishDraft
-    |> Async.RunSynchronously
-
-let formatCode _ =
-    [
-        srcCodeGlob
-        testsCodeGlob
-    ]
-    |> Seq.collect id
-    // Ignore AssemblyInfo
-    |> Seq.filter(fun f -> f.EndsWith("AssemblyInfo.fs") |> not)
-    |> formatFilesAsync FormatConfig.FormatConfig.Default
-    |> Async.RunSynchronously
-    |> Seq.iter(fun result ->
-        match result with
-        | Formatted(original, tempfile) ->
-            tempfile |> Shell.copyFile original
-            Trace.logfn "Formatted %s" original
-        | _ -> ()
-    )
-
+    let exitCode = Shell.Exec("dotnet", sprintf "nuget push %s -s nuget.org -k %s" nupkg nugetKey, "dist")
+    if exitCode <> 0
+    then failwith "Could not publish package"
 
 let buildDocs _ =
     DocsTool.build ()
@@ -434,16 +355,6 @@ let watchDocs _ =
     watchBuild ()
     DocsTool.watch ()
 
-let releaseDocs ctx =
-    isReleaseBranchCheck ()
-
-    Git.Staging.stageAll docsDir
-    Git.Commit.exec "" (sprintf "Documentation release of version %s" releaseNotes.NugetVersion)
-    if isRelease (ctx.Context.AllExecutingTargets) |> not then
-        // We only want to push if we're only calling "ReleaseDocs" target
-        // If we're calling "Release" target, we'll let the "GitRelease" target do the git push
-        Git.Branches.push ""
-
 
 //-----------------------------------------------------------------------------
 // Target Declaration
@@ -457,37 +368,10 @@ Target.create "GenerateCoverageReport" generateCoverageReport
 Target.create "WatchTests" watchTests
 Target.create "GenerateAssemblyInfo" generateAssemblyInfo
 Target.create "DotnetPack" dotnetPack
-Target.create "SourceLinkTest" sourceLinkTest
 Target.create "PublishToNuGet" publishToNuget
-Target.create "GitRelease" gitRelease
-Target.create "GitHubRelease" githubRelease
-Target.create "FormatCode" formatCode
 Target.create "Release" ignore
 Target.create "BuildDocs" buildDocs
 Target.create "WatchDocs" watchDocs
-Target.create "ReleaseDocs" releaseDocs
-
-Target.create "PublishAnalyzer" <| fun _ ->
-    let publishExitCode = Shell.Exec("dotnet", "publish -c Release --framework netstandard2.0", "src" </> "Npgsql.FSharp.Analyzer")
-
-    if publishExitCode <> 0 then
-        failwith "Could not run `dotnet publish`"
-    else
-        let compiledAssemblies =
-            !! "src/Npgsql.FSharp.Analyzer/bin/Release/netstandard2.0/publish/**/*.dll"
-            |> String.concat " "
-            |> sprintf "/out:Npgsql.FSharp.Merged.Analyzer.dll /allowDup /log /ndebug %s"
-
-        let workingDir = "src" </> "Npgsql.FSharp.Analyzer" </> "bin" </> "Release" </> "netstandard2.0" </> "publish"
-        let fileName = "ilmerge" </> "tools" </> "net452" </> "ILMerge.exe"
-
-        let mergeResult = Shell.Exec(fileName, compiledAssemblies, workingDir)
-        if mergeResult <> 0 then
-            failwith "Could not merge the analyzer assembly"
-        else
-            let output = "Npgsql.FSharp.Merged.Analyzer.dll"
-            Shell.copyFile ("dist" </> output) (workingDir </> output)
-            printfn "Merging was succesful"
 
 //-----------------------------------------------------------------------------
 // Target Dependencies
@@ -498,7 +382,6 @@ Target.create "PublishAnalyzer" <| fun _ ->
 // Ensure Clean is called before DotnetRestore
 "Clean" ?=> "DotnetRestore"
 "Clean" ==> "DotnetPack"
-"Clean" ==> "DotnetRestore" ==> "PublishAnalyzer"
 
 // Only call AssemblyInfo if Publish was in the call chain
 // Ensure AssemblyInfo is called after DotnetRestore and before DotnetBuild
@@ -507,10 +390,8 @@ Target.create "PublishAnalyzer" <| fun _ ->
 "GenerateAssemblyInfo" ==> "PublishToNuGet"
 
 "DotnetBuild" ==> "BuildDocs"
-"BuildDocs" ==> "ReleaseDocs"
 "BuildDocs" ?=> "PublishToNuget"
 "DotnetPack" ?=> "BuildDocs"
-"GenerateCoverageReport" ?=> "ReleaseDocs"
 
 "DotnetBuild" ==> "WatchDocs"
 
@@ -519,10 +400,7 @@ Target.create "PublishAnalyzer" <| fun _ ->
     ==> "DotnetTest"
     =?> ("GenerateCoverageReport", not disableCodeCoverage)
     ==> "DotnetPack"
-    ==> "SourceLinkTest"
     ==> "PublishToNuGet"
-    ==> "GitRelease"
-    ==> "GitHubRelease"
     ==> "Release"
 
 "DotnetRestore"

@@ -2,7 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
+        <TargetFramework>netcoreapp2.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
@@ -11,7 +11,7 @@
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="../../src/Npgsql.FSharp.Analyzer/Npgsql.FSharp.Analyzer.fsproj" />
+      <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer\NpgsqlFSharpAnalyzer.fsproj" />
     </ItemGroup>
     <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
