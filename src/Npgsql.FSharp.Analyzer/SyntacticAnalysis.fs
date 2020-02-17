@@ -68,7 +68,8 @@ module SyntacticAnalysis =
             then Some {
                 funcName = funcName
                 columnName = columnName
-                range = constRange }
+                funcNameRange = constRange
+                funcCallRange = range }
             else
                 None
         | _ ->

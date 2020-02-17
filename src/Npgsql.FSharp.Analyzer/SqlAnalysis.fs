@@ -38,15 +38,24 @@ module SqlAnalysis =
         |> List.tryFind (function | SqlAnalyzerBlock.Parameters(parameters, range) -> true | _ -> false)
         |> Option.map(function | SqlAnalyzerBlock.Parameters(parameters, range) -> (parameters, range) | _ -> failwith "should not happen")
 
+    let findColumnReadAttempts (operation: SqlOperation) =
+        operation.blocks
+        |> List.tryFind (function | SqlAnalyzerBlock.ReadingColumns(attempts) -> true | _ -> false)
+        |> Option.map(function | SqlAnalyzerBlock.ReadingColumns(attempts) -> attempts | _ -> failwith "should not happen")
+
     let analyzeParameters (operation: SqlOperation) (requiredParameters: InformationSchema.Parameter list) =
         match findParameters operation with
         | None ->
-            let missingParameters =
-                requiredParameters
-                |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
-                |> String.concat ", "
-                |> sprintf "Missing parameters [%s]. Please use Sql.parameters to provide them."
-            [ createWarning missingParameters operation.range ]
+            if not (List.isEmpty requiredParameters) then
+                let missingParameters =
+                    requiredParameters
+                    |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
+                    |> String.concat ", "
+                    |> sprintf "Missing parameters [%s]. Please use Sql.parameters to provide them."
+                [ createWarning missingParameters operation.range ]
+            else
+                [ ]
+
         | Some (queryParams, queryParamsRange) ->
             let missingParameters = [
                 for requiredParameter in requiredParameters do
@@ -68,6 +77,69 @@ module SqlAnalysis =
 
             missingParameters
 
+    let findColumn (name: string) (availableColumns: InformationSchema.Column list) =
+        availableColumns
+        |> List.tryFind (fun column -> column.Name = name)
+
+    let formatColumns (availableColumns: InformationSchema.Column list) =
+        availableColumns
+        |> List.map (fun column -> sprintf "%s:%s" column.Name column.DataType.Name)
+        |> String.concat ", "
+        |> sprintf "[%s]"
+
+    let analyzeColumnReadingAttempts (columnReadAttempts: ColumnReadAttempt list) (availableColumns: InformationSchema.Column list) =
+        [
+            for attempt in columnReadAttempts do
+                match findColumn attempt.columnName availableColumns with
+                | None ->
+                    let warningMsg = sprintf "Attempting to value read column named '%s' that was not returned by the result set. Use one of the following: %s" attempt.columnName (formatColumns availableColumns)
+                    yield createWarning warningMsg attempt.funcCallRange
+
+                | Some column ->
+                    let typeMismatchMessage (shouldUse: string) =
+                        sprintf "Type mismatch: attempting to read column '%s' of type '%s' using %s. Please use %s instead."
+                            column.Name column.DataType.Name attempt.funcName shouldUse
+
+                    let typeMismatch (shouldUse: string) =
+                        { createWarning (typeMismatchMessage shouldUse) attempt.funcCallRange with
+                            Fixes = [
+                                {  FromRange = attempt.funcCallRange
+                                   FromText = sprintf "%s \"%s\"" attempt.funcName attempt.columnName
+                                   ToText = sprintf "%s \"%s\"" shouldUse attempt.columnName }
+                            ]
+                        }
+
+                    match column.DataType.Name with
+                    | ("bit"|"boolean") when attempt.funcName <> "Sql.readBool" ->
+                        yield typeMismatch "Sql.readBool"
+                    | ("text"|"json"|"xml"|"jsonb") when attempt.funcName <> "Sql.readString" ->
+                        yield typeMismatch "Sql.readString"
+                    | ("character varying"|"character"|"char"|"varchar"|"citext") when attempt.funcName <> "Sql.readString" ->
+                        yield typeMismatch "Sql.readString"
+                    | ("int" | "int2" | "int4" | "smallint" | "integer") when attempt.funcName <> "Sql.readInt" ->
+                        yield typeMismatch "Sql.readInt"
+                    | ("int8" | "bigint") when attempt.funcName <> "Sql.readLong" ->
+                        yield typeMismatch "Sql.readLong"
+                    | ("real" | "float4" | "double precision" | "float8") when attempt.funcName <> "Sql.readNumber" ->
+                        yield typeMismatch "Sql.readNumber"
+                    | ("numeric" | "decimal" | "money") when attempt.funcName <> "Sql.readDecimal" || attempt.funcName <> "Sql.readMoney" ->
+                        yield typeMismatch "Sql.readDecimal"
+                    | "bytea" when attempt.funcName <> "Sql.readBytea" ->
+                        yield typeMismatch "Sql.readBytea"
+                    | "uuid" when attempt.funcName <> "Sql.readUuid" ->
+                        yield typeMismatch "Sql.readUuid"
+                    | "date" when attempt.funcName <> "Sql.readDate" ->
+                        yield typeMismatch "Sql.readDate"
+                    | ("timestamp"|"timestamp without time zone") when attempt.funcName <> "Sql.readTimestamp" ->
+                        yield typeMismatch "Sql.readTimestamp"
+                    | ("timestamptz"|"timestamp with time zone") when attempt.funcName <> "Sql.readTimestampTz" ->
+                        yield typeMismatch "Sql.readTimestampTz"
+                    | ("interval" | "time without time zone" | "time") when attempt.funcName <> "Sql.readTime" ->
+                        yield typeMismatch "Sql.readTime"
+                    | _ ->
+                        ()
+        ]
+
     let analyzeBlock (operation: SqlOperation) (connectionString: string) : Message list =
         match findQuery operation with
         | None ->
@@ -79,8 +151,11 @@ module SqlAnalysis =
                 match queryAnalysis with
                 | Result.Error queryError ->
                     [ createWarning queryError queryRange ]
-                | Result.Ok (parameters, outputColums) ->
-                    let parameterErrors = analyzeParameters operation parameters
-                    parameterErrors
+                | Result.Ok (parameters, outputColunms) ->
+                    let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
+                    [
+                        yield! analyzeParameters operation parameters
+                        yield! analyzeColumnReadingAttempts readingAttempts outputColunms
+                    ]
             with ex ->
                 [ createWarning ex.Message queryRange ]

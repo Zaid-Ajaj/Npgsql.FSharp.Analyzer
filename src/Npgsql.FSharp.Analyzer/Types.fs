@@ -5,7 +5,8 @@ open FSharp.Compiler.Range
 type ColumnReadAttempt = {
     funcName: string;
     columnName: string;
-    range : range
+    funcNameRange : range
+    funcCallRange: range
 }
 
 type UsedParameter = {

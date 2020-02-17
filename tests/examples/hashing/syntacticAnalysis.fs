@@ -15,7 +15,7 @@ let findSingleUser(userId: int) =
         option {
             let! username = Sql.readString "username" row
             let! user_id = Sql.readInt "user_id" row
-            let! active = Sql.readBool "active" row 
+            let! active = Sql.readBool "active" row
             return (username, user_id, active)
         })
 
