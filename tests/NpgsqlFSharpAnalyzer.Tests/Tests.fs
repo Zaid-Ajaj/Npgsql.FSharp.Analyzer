@@ -82,7 +82,7 @@ let tests =
 
         test "SQL scalar query analysis" {
             use db = createTestDatabase()
-            
+
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
@@ -109,7 +109,7 @@ let tests =
             END; $$
             LANGUAGE PLPGSQL;
             """
-            
+
             Sql.connect db.ConnectionString
             |> Sql.query createFuncQuery
             |> Sql.executeNonQuery

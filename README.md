@@ -4,18 +4,11 @@ Analyzer that provides advanced embedded SQL static analysis when using [Npgsql.
 
 ---
 
-## Builds
-
-macOS/Linux | Windows
---- | ---
-[![Travis Badge](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers.svg?branch=master)](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers) | [![Build status](https://ci.appveyor.com/api/projects/status/github/TheAngryByrd/BinaryDefense.FSharp.Analyzers?svg=true)](https://ci.appveyor.com/project/TheAngryByrd/BinaryDefense.FSharp.Analyzers)
-[![Build History](https://buildstats.info/travisci/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://travis-ci.org/TheAngryByrd/BinaryDefense.FSharp.Analyzers/builds) | [![Build History](https://buildstats.info/appveyor/chart/TheAngryByrd/BinaryDefense.FSharp.Analyzers)](https://ci.appveyor.com/project/TheAngryByrd/BinaryDefense.FSharp.Analyzers)
-
 ## NuGet
 
 Package | Stable | Prerelease
 --- | --- | ---
-BinaryDefense.FSharp.Analyzers | [![NuGet Badge](https://buildstats.info/nuget/BinaryDefense.FSharp.Analyzers)](https://www.nuget.org/packages/BinaryDefense.FSharp.Analyzers/) | [![NuGet Badge](https://buildstats.info/nuget/BinaryDefense.FSharp.Analyzers?includePreReleases=true)](https://www.nuget.org/packages/BinaryDefense.FSharp.Analyzers/)
+NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/)
 
 ---
 
@@ -33,43 +26,12 @@ or
 
 ---
 
-### Environment Variables
-
-- `CONFIGURATION` will set the [configuration](https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-build?tabs=netcore2x#options) of the dotnet commands.  If not set, it will default to Release.
-  - `CONFIGURATION=Debug ./build.sh` will result in `-c` additions to commands such as in `dotnet build -c Debug`
-- `GITHUB_TOKEN` will be used to upload release notes and Nuget packages to GitHub.
-  - Be sure to set this before releasing
-- `DISABLE_COVERAGE` Will disable running code coverage metrics.  AltCover can have [severe performance degradation](https://github.com/SteveGilham/altcover/issues/57) so it's worth disabling when looking to do a quicker feedback loop.
-  - `DISABLE_COVERAGE=1 ./build.sh`
-
-
----
-
 ### Building
 
 
 ```sh
 > build.cmd <optional buildtarget> // on windows
 $ ./build.sh  <optional buildtarget>// on unix
-```
-
-The bin of your library should look similar to:
-
-```
-$ tree src/MyCoolNewLib/bin/
-src/MyCoolNewLib/bin/
-└── Debug
-    ├── net461
-    │   ├── FSharp.Core.dll
-    │   ├── MyCoolNewLib.dll
-    │   ├── MyCoolNewLib.pdb
-    │   ├── MyCoolNewLib.xml
-    └── netstandard2.1
-        ├── MyCoolNewLib.deps.json
-        ├── MyCoolNewLib.dll
-        ├── MyCoolNewLib.pdb
-        └── MyCoolNewLib.xml
-
 ```
 
 ---

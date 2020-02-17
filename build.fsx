@@ -4,20 +4,25 @@
 #r "Facades/netstandard"
 #r "netstandard"
 #endif
+
+#r "System.IO.Compression.FileSystem.dll"
+
 open System
+open System.IO
+open System.IO.Compression
 open Fake.SystemHelper
 open Fake.Core
 open Fake.DotNet
 open Fake.Tools
 open Fake.IO
 open Fake.IO.FileSystemOperators
+
 open Fake.IO.Globbing.Operators
 open Fake.Core.TargetOperators
 open Fake.Api
 open Fake.BuildServer
 open Fantomas
 open Fantomas.FakeHelpers
-
 
 
 BuildServer.install [
@@ -319,8 +324,28 @@ let dotnetPack ctx =
         ]
 
     let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "NpgsqlFSharpAnalyzer")
-    if exitCode <> 0
-    then failwith "dotnet pack failed"
+    if exitCode <> 0 then
+        failwith "dotnet pack failed"
+    else
+        match Shell.Exec("dotnet", "publish -c Release --framework netcoreapp2.0", "src" </> "NpgsqlFSharpAnalyzer") with
+        | 0 ->
+            let nupkg =
+                System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
+                |> Seq.head
+                |> IO.Path.GetFullPath
+
+            let nugetParent = DirectoryInfo(nupkg).Parent.FullName
+            let nugetFileName = IO.Path.GetFileNameWithoutExtension(nupkg)
+
+            let publishPath = "src" </> "NpgsqlFSharpAnalyzer" </> "bin" </> "Release" </> "netcoreapp2.0" </> "publish"
+            ZipFile.ExtractToDirectory(nupkg, nugetParent </> nugetFileName)
+            File.Delete nupkg
+            Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0")
+            Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0") publishPath (fun _ -> true)
+            ZipFile.CreateFromDirectory(nugetParent </> nugetFileName, nupkg)
+            Shell.deleteDir(nugetParent </> nugetFileName)
+        | _ ->
+            ()
 
 let publishToNuget _ =
     let nugetKey =
