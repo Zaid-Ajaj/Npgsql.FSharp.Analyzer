@@ -3,20 +3,12 @@ sudo: required
 dist: xenial
 
 dotnet: 3.0.100
-mono:
-  - latest # => "stable release"
-  - alpha
-  - beta
-  - weekly # => "latest commits"
+addons:
+    apt:
+        packages:
+            - dotnet-sdk-2.2
 os:
-  - linux
+    - linux
 
 script:
-  - ./build.sh
-
-matrix:
-  fast_finish: true
-  allow_failures:
-    - mono: alpha
-    - mono: beta
-    - mono: weekly
+    - ./build.sh
