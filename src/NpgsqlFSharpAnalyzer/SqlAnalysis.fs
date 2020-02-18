@@ -155,14 +155,21 @@ module SqlAnalysis =
                         ()
         ]
 
+    /// Tries to read the database schema from the connection string
+    let databaseSchema connectionString =
+        try Result.Ok (InformationSchema.getDbSchemaLookups(connectionString))
+        with | ex -> Result.Error ex.Message
+
     let analyzeBlock (operation: SqlOperation) (connectionString: string) : Message list =
         match findQuery operation with
         | None ->
-            [ createWarning "Missing query in this block of code. Please use Sql.query to provide a query" operation.range ]
+            [ ]
         | Some (query, queryRange) ->
-            try
-                let databaseSchema = InformationSchema.getDbSchemaLookups(connectionString)
-                let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, databaseSchema)
+            match databaseSchema connectionString with
+            | Result.Error connectionError ->
+                [ createWarning connectionError queryRange ]
+            | Result.Ok schema ->
+                let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
                 match queryAnalysis with
                 | Result.Error queryError ->
                     [ createWarning queryError queryRange ]
@@ -172,5 +179,3 @@ module SqlAnalysis =
                         yield! analyzeParameters operation parameters
                         yield! analyzeColumnReadingAttempts readingAttempts outputColunms
                     ]
-            with ex ->
-                [ createWarning ex.Message queryRange ]

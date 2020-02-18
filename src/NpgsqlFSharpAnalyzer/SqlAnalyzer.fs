@@ -6,7 +6,7 @@ open System
 module SqlAnalyzer =
     [<Analyzer>]
     let queryAnalyzer : Analyzer =
-        fun ctx ->
+        fun (ctx: Context) ->
             let syntacticBlocks = SyntacticAnalysis.findSqlBlocks ctx
             let connectionString = Environment.GetEnvironmentVariable "NPGSQL_FSHARP"
             if isNull connectionString || String.IsNullOrWhiteSpace connectionString then
