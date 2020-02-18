@@ -60,32 +60,41 @@ module SqlAnalysis =
         | Some (queryParams, queryParamsRange) ->
             if List.isEmpty requiredParameters then
                 [ createWarning "Provided parameters are redundant. Sql query is not parameterized" operation.range ]
-            else 
-                let missingParameters = [
-                    for requiredParameter in requiredParameters do
-                        if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
+            else
+                match requiredParameters, queryParams with
+                | [ requiredParam ], [ providedParam ] ->
+                    // match simple case when there is one parameter provided with mismatched name
+                    [
+                        if requiredParam.Name <> providedParam.parameter.TrimStart('@')
                         then
-                            let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
-                            yield createWarning message queryParamsRange
+                            let message = sprintf "Unexpected provided paramter '%s'. Did you mean '%s'?" (providedParam.parameter.TrimStart('@')) requiredParam.Name
+                            yield createWarning message providedParam.range
+                    ]
+                | _ ->
+                    [
+                        for requiredParameter in requiredParameters do
+                            if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
+                            then
+                                let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
+                                yield createWarning message queryParamsRange
 
-                    for providedParam in queryParams do
-                        if not (requiredParameters |> List.exists (fun p -> p.Name = providedParam.parameter.TrimStart('@')))
-                        then
-                            let levenshtein = new NormalizedLevenshtein()
-                            let closestAlternative =
-                                requiredParameters
-                                |> List.minBy (fun parameter -> levenshtein.Distance(parameter.Name, providedParam.parameter))
-                                |> fun parameter -> parameter.Name
-                                 
-                            let expectedParameters =
-                                requiredParameters
-                                |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
-                                |> String.concat ", "
-                                |> sprintf "Required parameters are [%s]."
-                            yield createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.parameter closestAlternative expectedParameters) providedParam.range
-                ]
+                        for providedParam in queryParams do
+                            if not (requiredParameters |> List.exists (fun p -> p.Name = providedParam.parameter.TrimStart('@')))
+                            then
+                                let levenshtein = new NormalizedLevenshtein()
+                                let closestAlternative =
+                                    requiredParameters
+                                    |> List.minBy (fun parameter -> levenshtein.Distance(parameter.Name, providedParam.parameter))
+                                    |> fun parameter -> parameter.Name
 
-                missingParameters
+                                let expectedParameters =
+                                    requiredParameters
+                                    |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
+                                    |> String.concat ", "
+                                    |> sprintf "Required parameters are [%s]."
+                                yield createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.parameter closestAlternative expectedParameters) providedParam.range
+                    ]
+
 
     let findColumn (name: string) (availableColumns: InformationSchema.Column list) =
         availableColumns
@@ -125,7 +134,7 @@ module SqlAnalysis =
                         }
 
                     match column.DataType.Name with
-                    | ("bit"|"boolean") when attempt.funcName <> "Sql.readBool" ->
+                    | ("bit"|"bool"|"boolean") when attempt.funcName <> "Sql.readBool" ->
                         yield typeMismatch "Sql.readBool"
                     | ("text"|"json"|"xml"|"jsonb") when attempt.funcName <> "Sql.readString" ->
                         yield typeMismatch "Sql.readString"

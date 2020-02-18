@@ -1,3 +1,6 @@
+#### 1.3.0 - 2020-02-18
+* Detect type-mismatch when reading columns of type 'bool' from the database. Simplify parameter mismatch when there is only one parameter.
+
 #### 1.2.0 - 2020-02-18
 * Remove warning when there is no query provided (to avoid making a bother-ware analyzer)
 

@@ -1,6 +1,8 @@
 # Npgsql.FSharp.Analyzer
 
-Analyzer that provides advanced embedded SQL static analysis when using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). Checks syntax of the used queries and performs type-checking of the provided parameters as well as the types of the columns that were read.
+Analyzer that provides advanced embedded SQL static analysis when using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). Checks syntax of the used queries and performs type-checking of the provided parameters as well as the types of the columns that were read and how they are read.
+
+The analyzer requires an environment variable named `NPGSQL_FSHARP` with a connection string that points to your development database. This is how it checks and verifies the SQL queries that you write in the code.
 
 ---
 
