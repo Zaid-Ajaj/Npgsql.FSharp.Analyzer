@@ -82,6 +82,12 @@ module SyntacticAnalysis =
         | _ ->
             None
 
+    let (|LiteralQuery|_|) = function
+        | Apply("Sql.query", SynExpr.Ident(identifier), range) ->
+            Some (identifier.idText, range)
+        | _ ->
+            None
+
     let (|SqlStoredProcedure|_|) = function
         | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), range) ->
             Some (funcName, constRange)
@@ -91,6 +97,8 @@ module SyntacticAnalysis =
     let rec findQuery = function
         | SqlQuery (query, range) ->
             [ SqlAnalyzerBlock.Query(query, range) ]
+        | LiteralQuery (identifier, range) ->
+            [ SqlAnalyzerBlock.LiteralQuery(identifier, range) ]
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [ yield! findQuery funcExpr; yield! findQuery argExpr ]
         | _ ->
@@ -173,9 +181,34 @@ module SyntacticAnalysis =
         match binding with
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
             visitSyntacticExpression expr range
-             
+
+
+    let findLiterals (ctx: Context) =
+        let values = new ResizeArray<string * string>()
+        for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
+            match symbol.LiteralValue with
+            | Some value when value.GetType() = typeof<string> ->
+                values.Add((symbol.LogicalName, unbox<string> value))
+            | _ -> ()
+
+        Map.ofSeq values
+
+    let applyLiterals (literals: Map<string, string>) (operation: SqlOperation) =
+
+        let modifiedBlocks = 
+            operation.blocks
+            |> List.choose (function
+                | SqlAnalyzerBlock.LiteralQuery(identifier, range) ->
+                    match literals.TryFind identifier with
+                    | Some literalQuery -> Some (SqlAnalyzerBlock.Query(literalQuery, range))
+                    | None -> None
+                | differentBlock ->
+                    Some differentBlock)
+
+        { operation with blocks = modifiedBlocks }
+
     let findSqlBlocks (ctx: Context) =
-        let blocks = ResizeArray<SqlOperation>()
+        let operations = ResizeArray<SqlOperation>()
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->
             match input with
@@ -189,11 +222,14 @@ module SyntacticAnalysis =
                                 for binding in bindings do
                                     visitBinding binding
                                     |> List.map (fun block -> { block with fileName = ctx.FileName })
-                                    |> blocks.AddRange
+                                    |> operations.AddRange
                             | _ ->
                                 ()
 
         | ParsedInput.SigFile file ->
             ()
 
-        List.ofSeq blocks
+        let moduleLiterals = findLiterals ctx
+        operations
+        |> Seq.map (applyLiterals moduleLiterals)
+        |> Seq.toList

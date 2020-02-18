@@ -1,3 +1,6 @@
+#### 1.4.0 - 2020-02-18
+* Enable reading `[<Literal>]` queries from the same module and add docs
+
 #### 1.3.0 - 2020-02-18
 * Detect type-mismatch when reading columns of type 'bool' from the database. Simplify parameter mismatch when there is only one parameter.
 

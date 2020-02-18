@@ -17,6 +17,7 @@ type UsedParameter = {
 [<RequireQualifiedAccess>]
 type SqlAnalyzerBlock =
     | Query of string * range
+    | LiteralQuery of ident:string * range 
     | StoredProcedure of string * range
     | Parameters of UsedParameter list *  range
     | ReadingColumns of ColumnReadAttempt list

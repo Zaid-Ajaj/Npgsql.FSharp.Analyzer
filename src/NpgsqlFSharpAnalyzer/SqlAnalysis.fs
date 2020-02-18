@@ -95,7 +95,6 @@ module SqlAnalysis =
                                 yield createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.parameter closestAlternative expectedParameters) providedParam.range
                     ]
 
-
     let findColumn (name: string) (availableColumns: InformationSchema.Column list) =
         availableColumns
         |> List.tryFind (fun column -> column.Name = name)

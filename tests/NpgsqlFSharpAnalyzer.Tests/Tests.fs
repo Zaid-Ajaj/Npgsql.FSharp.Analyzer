@@ -16,17 +16,10 @@ let inline analyze file = AnalyzerBootstrap.runProject file analyzers
 let inline context file = AnalyzerBootstrap.context file
 
 let createTestDatabase() =
-    // Travis CI uses an empty string for the password of the database
-    let databasePassword =
-        let runningTravis = Environment.GetEnvironmentVariable "TESTING_IN_TRAVISCI"
-        if isNull runningTravis || String.IsNullOrWhiteSpace runningTravis
-        then "postgres" // for local tests
-        else "" // for Travis CI
-
     Sql.host "localhost"
     |> Sql.port 5432
     |> Sql.username "postgres"
-    |> Sql.password databasePassword
+    |> Sql.password "postgres"
     |> Sql.str
     |> ThrowawayDatabase.Create
 
@@ -39,6 +32,19 @@ let tests =
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlBlocks context
                 Expect.equal 4 (List.length operationBlocks) "Found four operation blocks"
+        }
+
+        test "Syntactic Analysis: reading queries with [<Literal>] query" {
+            match context (find "../examples/hashing/syntacticAnalysis-literalStrings.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlBlocks context with
+                | [ operation ] ->
+                    match SqlAnalysis.findQuery operation with
+                    | Some(query, range) -> Expect.equal query "SELECT * FROM users" "Literal string should be read correctly"
+                    | None -> failwith "Should have found the correct query"
+                | _ ->
+                    failwith "Should not happen"
         }
 
         test "SQL schema analysis" {
@@ -166,6 +172,46 @@ let tests =
                 | [ message ] ->
                     Expect.equal Severity.Warning message.Severity "The message is a warning"
                     Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
+                | _ ->
+                    failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: type mismatch" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/semanticAnalysis-typeMismatch.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
+                match messages with
+                | [ message ] ->
+                    Expect.stringContains message.Message "Please use Sql.readBool instead" "Message contains suggestion to use Sql.readBool"
+                | _ ->
+                    failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: redundant parameters" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/semanticAnalysis-redundantParameters.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
+                match messages with
+                | [ message ] ->
+                    Expect.stringContains message.Message "Provided parameters are redundant" "Message contains suggestion to remove Sql.parameters"
                 | _ ->
                     failwith "Expected only one error message"
         }
