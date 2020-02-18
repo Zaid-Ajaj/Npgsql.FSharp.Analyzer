@@ -31,12 +31,12 @@ jobs:
                   ./build.sh
               env:
                   # Work around https://github.com/actions/setup-dotnet/issues/29
-                  DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+                  DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/3.1.100/x64
                   CI: true
             - name: Build
               if: runner.os == 'Windows'
               run: ./build.cmd
               env:
                   # Work around https://github.com/actions/setup-dotnet/issues/29
-                  DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/${{ matrix.dotnet }}/x64
+                  DOTNET_ROOT: ${{ runner.tool_cache }}/dncs/3.1.100/x64
                   CI: true
