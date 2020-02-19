@@ -47,6 +47,47 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Syntactic Analysis: combination with Sql.executeScalar can be detected" {
+            match context (find "../examples/hashing/syntacticAnalysisExecuteScalar.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlBlocks context with
+                | [ operation ] ->
+                    match SqlAnalysis.findQuery operation with
+                    | Some(query, range) ->
+                        Expect.equal query "SELECT COUNT(*) FROM users WHERE is_active = @is_active" "Literal string should be read correctly"
+                        match SqlAnalysis.findParameters operation with
+                        | Some ([ parameter ], range) ->
+                            Expect.equal "is_active" parameter.parameter "Parameter is correct"
+                        | otherwise ->
+                            failwith "There should have been a parameter"
+                    | None ->
+                        failwith "Should have found the correct query"
+                | _ ->
+                    failwith "Should not happen"
+        }
+
+        test "Syntactic Analysis: reading queries with extra processing after Sql.executeReader" {
+            match context (find "../examples/hashing/syntacticAnalysisProcessedList.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlBlocks context with
+                | [ operation ] ->
+                    match SqlAnalysis.findQuery operation with
+                    | Some(query, range) ->
+                        Expect.equal query "SELECT * FROM users" "Query should be read correctly"
+                        match SqlAnalysis.findColumnReadAttempts operation with
+                        | Some [ attempt ] ->
+                            Expect.equal attempt.funcName "Sql.readString" "Function name is correct"
+                            Expect.equal attempt.columnName "username" "Column name is read correctly"
+                        | otherwise ->
+                            failwith "Should have found one column read attempt"
+                    | None ->
+                        failwith "Should have found the correct query"
+                | otherwise ->
+                    failwith "Should not happen"
+        }
+
         test "SQL schema analysis" {
             use db = createTestDatabase()
 

@@ -1,3 +1,6 @@
+#### 1.5.0 - 2020-02-19
+* Improved syntactic F# analysis in `Sql` module is used in combination with other generic functions
+
 #### 1.4.0 - 2020-02-18
 * Enable reading `[<Literal>]` queries from the same module and add docs
 

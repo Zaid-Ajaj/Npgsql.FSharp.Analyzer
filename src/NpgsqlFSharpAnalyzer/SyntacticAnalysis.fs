@@ -143,7 +143,7 @@ module SyntacticAnalysis =
         | _ ->
             [ ]
 
-    let rec visitSyntacticExpression (expr: SynExpr) (range: range) =
+    let rec visitSyntacticExpression (expr: SynExpr) (fullExpressionRange: range) =
         match expr with
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             match argExpr with
@@ -156,17 +156,26 @@ module SyntacticAnalysis =
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
-                let block = { blocks = blocks; range = range; fileName = "" }
-                [ block ]
-            | FuncName("Sql.executeNonQuery"|"Sql.executeNonQueryAsync") ->
-                    let blocks = [
-                        yield! findFunc funcExpr
-                        yield! findQuery funcExpr
-                        yield! findParameters funcExpr
-                    ]
+                [ { blocks = blocks; range = range; fileName = "" } ]
 
-                    let block = { blocks = blocks; range = range; fileName = "" }
-                    [ block ]
+            | FuncName(functionWithoutParameters) ->
+                let blocks = [
+                    yield! findFunc funcExpr
+                    yield! findQuery funcExpr
+                    yield! findParameters funcExpr
+                ]
+
+                [ { blocks = blocks; range = range; fileName = "" } ]
+
+            | Apply(anyOtherFunction, functionArg, range) ->
+                let blocks = [
+                    yield! findFunc funcExpr
+                    yield! findQuery funcExpr
+                    yield! findParameters funcExpr
+                    yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
+                ]
+
+                [ { blocks = blocks; range = range; fileName = "" } ]
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
@@ -174,6 +183,7 @@ module SyntacticAnalysis =
                 yield! visitSyntacticExpression body range
                 for binding in bindings do yield! visitBinding binding
             ]
+
         | otherwise ->
             [ ]
 
