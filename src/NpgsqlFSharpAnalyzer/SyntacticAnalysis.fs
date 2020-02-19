@@ -68,7 +68,7 @@ module SyntacticAnalysis =
             then Some {
                 funcName = funcName
                 columnName = columnName
-                funcNameRange = constRange
+                columnNameRange = constRange
                 funcCallRange = range }
             else
                 None
@@ -173,10 +173,14 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range; fileName = "" } ]
 
-            | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range) ->
-    
+            | SqlParameters(parameters, range) ->
+                let sqlParameters =
+                    parameters
+                    |> List.map (fun (name, range) -> { parameter = name; range = range })
+
                 let blocks = [
-                    SqlAnalyzerBlock.Query(query, constRange)
+                    yield! findQuery funcExpr
+                    yield SqlAnalyzerBlock.Parameters(sqlParameters, range)
                 ]
 
                 [ { blocks = blocks; range = range; fileName = "" } ]

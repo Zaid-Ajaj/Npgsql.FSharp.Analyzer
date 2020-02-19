@@ -1,3 +1,6 @@
+#### 1.7.0 - 2020-02-19
+* Read parameters as soon as they written and implement proper code fixes.
+
 #### 1.6.0 - 2020-02-19
 * Read queries as soon as they written without expecting `Sql.executeReader`
 
