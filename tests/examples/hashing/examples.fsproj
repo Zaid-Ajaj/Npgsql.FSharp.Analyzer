@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="syntacticAnalysisSimpleQuery.fs" />
     <Compile Include="syntacticAnalysisExecuteScalar.fs" />
     <Compile Include="syntacticAnalysisProcessedList.fs" />
     <Compile Include="semanticAnalysis-missingColumn.fs" />

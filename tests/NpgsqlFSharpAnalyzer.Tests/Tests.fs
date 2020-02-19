@@ -47,6 +47,19 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Syntactic Analysis: simple queries can be read" {
+            match context (find "../examples/hashing/syntacticAnalysisSimpleQuery.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlBlocks context with
+                | [ operation ] ->
+                    match SqlAnalysis.findQuery operation with
+                    | Some(query, range) -> Expect.equal query "SELECT COUNT(*) FROM users" "Literal string should be read correctly"
+                    | None -> failwith "Should have found the correct query"
+                | _ ->
+                    failwith "Should not happen"
+        }
+
         test "Syntactic Analysis: combination with Sql.executeScalar can be detected" {
             match context (find "../examples/hashing/syntacticAnalysisExecuteScalar.fs") with
             | None -> failwith "Could not crack project"

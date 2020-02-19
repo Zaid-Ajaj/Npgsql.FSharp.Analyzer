@@ -158,6 +158,29 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range; fileName = "" } ]
 
+            | SqlQuery(query, queryRange) ->
+                
+                let blocks = [
+                    SqlAnalyzerBlock.Query(query, queryRange)
+                ]
+
+                [ { blocks = blocks; range = range; fileName = "" } ]
+
+            | LiteralQuery(identifier, queryRange) ->
+                let blocks = [
+                    SqlAnalyzerBlock.LiteralQuery(identifier, queryRange)
+                ]
+
+                [ { blocks = blocks; range = range; fileName = "" } ]
+
+            | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range) ->
+    
+                let blocks = [
+                    SqlAnalyzerBlock.Query(query, constRange)
+                ]
+
+                [ { blocks = blocks; range = range; fileName = "" } ]
+
             | FuncName(functionWithoutParameters) ->
                 let blocks = [
                     yield! findFunc funcExpr

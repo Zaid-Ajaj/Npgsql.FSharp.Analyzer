@@ -1,3 +1,6 @@
+#### 1.6.0 - 2020-02-19
+* Read queries as soon as they written without expecting `Sql.executeReader`
+
 #### 1.5.0 - 2020-02-19
 * Improved syntactic F# analysis in `Sql` module is used in combination with other generic functions
 
