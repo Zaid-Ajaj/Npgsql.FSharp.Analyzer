@@ -116,7 +116,15 @@ module SqlAnalysis =
                         |> fun column -> column.Name
 
                     let warningMsg = sprintf "Attempting to read column named '%s' that was not returned by the result set. Did you mean to read '%s'?\nAvailable columns from the result set are:\n%s" attempt.columnName closestAlternative (formatColumns availableColumns)
-                    yield createWarning warningMsg attempt.columnNameRange
+                    let warning = createWarning warningMsg attempt.columnNameRange
+                    let codeFixes =
+                        availableColumns
+                        |> List.map (fun column ->
+                            { FromRange = attempt.columnNameRange
+                              FromText = attempt.columnName
+                              ToText = sprintf "\"%s\"" column.Name })
+                    
+                    yield { warning with Fixes = codeFixes }
 
                 | Some column ->
                     let typeMismatchMessage (shouldUse: string) =

@@ -1,3 +1,6 @@
+#### 1.8.0 - 2020-02-19
+* Provide column name fix suggestions when reading an unknown column
+
 #### 1.7.0 - 2020-02-19
 * Read parameters as soon as they written and implement proper code fixes.
 
