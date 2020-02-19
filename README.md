@@ -1,6 +1,6 @@
 # Npgsql.FSharp.Analyzer
 
-Analyzer that provides advanced embedded SQL static analysis when using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). Checks syntax of the used queries and performs type-checking of the provided parameters as well as the types of the columns that were read and how they are read.
+Analyzer that provides embedded **SQL syntax analysis** when writing queries using Npgsql.FSharp. It verifies querie syntax, checks the parameters in the query match with the provided parameters and performs **type-checking** on the functions that read columns from the result sets.
 
 ## NuGet
 
@@ -12,7 +12,7 @@ NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFShar
 ## Using The Analyzer
 
 ### 1 - Set `NPGSQL_FSHARP` environment variable
-The analyzer requires an environment variable named `NPGSQL_FSHARP` with a connection string that points to your development database. This is how it checks and verifies the SQL queries that you write in the code.
+The analyzer requires an environment variable named `NPGSQL_FSHARP` with a connection string that points to your development database. The analyzers uses this connection string to retrieve the schema of the database as well as the schema and column output of the result sets from the various queries.
 
 ### 2 - Install the analyzer using paket
 Use paket to install the analyzer into a specialized `Analyzers` dependency group like this:
