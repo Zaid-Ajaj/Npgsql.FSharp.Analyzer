@@ -10,7 +10,7 @@ type ColumnReadAttempt = {
 }
 
 type UsedParameter = {
-    parameter : string
+    name : string
     range : range 
 }
 
@@ -25,5 +25,4 @@ type SqlAnalyzerBlock =
 type SqlOperation = {
     blocks : SqlAnalyzerBlock list
     range : range
-    fileName : string
 }

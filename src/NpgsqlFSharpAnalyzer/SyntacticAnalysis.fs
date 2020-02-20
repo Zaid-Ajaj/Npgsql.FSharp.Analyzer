@@ -7,8 +7,6 @@ open FSharp.Compiler.Range
 
 module SyntacticAnalysis =
 
-    let readRange (r: range) = r
-
     let (|FuncName|_|) = function
         | SynExpr.Ident ident -> Some (ident.idText)
         | SynExpr.LongIdent(isOptional, longDotId, altName, range) ->
@@ -40,7 +38,7 @@ module SyntacticAnalysis =
 
     let (|ParameterTuple|_|) = function
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); secondItem ], commaRange, tupleRange) ->
-            Some (parameterName, readRange paramRange)
+            Some (parameterName, paramRange)
         | _ ->
             None
 
@@ -56,7 +54,7 @@ module SyntacticAnalysis =
         | Apply ("Sql.parameters", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , range) ->
             match listExpr with
             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
-                Some (readParameters compExpr, readRange compRange)
+                Some (readParameters compExpr, compRange)
             | _ ->
                 None
         | _ ->
@@ -116,7 +114,7 @@ module SyntacticAnalysis =
         | SqlParameters(parameters, range) ->
             let sqlParameters =
                 parameters
-                |> List.map (fun (name, range) -> { parameter = name; range = range })
+                |> List.map (fun (name, range) -> { name = name; range = range })
             [ SqlAnalyzerBlock.Parameters(sqlParameters, range) ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
@@ -156,7 +154,7 @@ module SyntacticAnalysis =
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
 
             | SqlQuery(query, queryRange) ->
                 
@@ -164,26 +162,26 @@ module SyntacticAnalysis =
                     SqlAnalyzerBlock.Query(query, queryRange)
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
 
             | LiteralQuery(identifier, queryRange) ->
                 let blocks = [
                     SqlAnalyzerBlock.LiteralQuery(identifier, queryRange)
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
 
             | SqlParameters(parameters, range) ->
                 let sqlParameters =
                     parameters
-                    |> List.map (fun (name, range) -> { parameter = name; range = range })
+                    |> List.map (fun (name, range) -> { name = name.TrimStart('@'); range = range })
 
                 let blocks = [
                     yield! findQuery funcExpr
                     yield SqlAnalyzerBlock.Parameters(sqlParameters, range)
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
 
             | FuncName(functionWithoutParameters) ->
                 let blocks = [
@@ -192,7 +190,7 @@ module SyntacticAnalysis =
                     yield! findParameters funcExpr
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
 
             | Apply(anyOtherFunction, functionArg, range) ->
                 let blocks = [
@@ -202,7 +200,7 @@ module SyntacticAnalysis =
                     yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
 
-                [ { blocks = blocks; range = range; fileName = "" } ]
+                [ { blocks = blocks; range = range; } ]
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
@@ -219,7 +217,6 @@ module SyntacticAnalysis =
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
             visitSyntacticExpression expr range
 
-
     let findLiterals (ctx: Context) =
         let values = new ResizeArray<string * string>()
         for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
@@ -230,8 +227,8 @@ module SyntacticAnalysis =
 
         Map.ofSeq values
 
+    /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
     let applyLiterals (literals: Map<string, string>) (operation: SqlOperation) =
-
         let modifiedBlocks = 
             operation.blocks
             |> List.choose (function
@@ -257,9 +254,7 @@ module SyntacticAnalysis =
                             match declaration with
                             | SynModuleDecl.Let(isRecursiveDef, bindings, range) ->
                                 for binding in bindings do
-                                    visitBinding binding
-                                    |> List.map (fun block -> { block with fileName = ctx.FileName })
-                                    |> operations.AddRange
+                                    operations.AddRange (visitBinding binding)
                             | _ ->
                                 ()
 

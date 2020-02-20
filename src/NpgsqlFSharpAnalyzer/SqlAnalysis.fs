@@ -21,14 +21,6 @@ module SqlAnalysis =
           Range = range;
           Fixes = [ ] }
 
-    let createError (message: string) (range: range) : Message =
-        { Message = message;
-          Type = "SQL Analysis";
-          Code = "SQL0002";
-          Severity = Error;
-          Range = range;
-          Fixes = [ ] }
-
     let findQuery (operation: SqlOperation) =
         operation.blocks
         |> List.tryFind (function | SqlAnalyzerBlock.Query(query, range) -> true | _ -> false)
@@ -65,34 +57,70 @@ module SqlAnalysis =
                 | [ requiredParam ], [ providedParam ] ->
                     // match simple case when there is one parameter provided with mismatched name
                     [
-                        if requiredParam.Name <> providedParam.parameter.TrimStart('@')
+                        if requiredParam.Name <> providedParam.name
                         then
-                            let message = sprintf "Unexpected provided paramter '%s'. Did you mean '%s'?" (providedParam.parameter.TrimStart('@')) requiredParam.Name
-                            yield createWarning message providedParam.range
+                            let message = sprintf "Unexpected provided paramter '%s'. Did you mean '%s'?" providedParam.name requiredParam.Name
+                            let fix =
+                              { FromRange = providedParam.range
+                                FromText = providedParam.name
+                                ToText = sprintf "\"%s\"" requiredParam.Name }
+
+                            yield  { createWarning message providedParam.range with Fixes = [fix] }
                     ]
                 | _ ->
                     [
+                        /// None of the required parameters have the name of this provided parameter
+                        let isUnknown (parameter: UsedParameter) =
+                            requiredParameters
+                            |> List.forall (fun requiredParam -> parameter.name <> requiredParam.Name)
+
+                        let isRedundant (parameter: UsedParameter) =
+                            // every required parameter has a corresponding provided query parameter
+                            let requirementSatisfied =
+                                requiredParameters
+                                |> List.forall (fun requiredParam -> queryParams |> List.exists (fun queryParam -> queryParam.name = requiredParam.Name))
+
+                            requirementSatisfied && isUnknown parameter
+
                         for requiredParameter in requiredParameters do
-                            if not (queryParams |> List.exists (fun p -> p.parameter.TrimStart('@') = requiredParameter.Name))
+                            if not (queryParams |> List.exists (fun providedParam -> providedParam.name = requiredParameter.Name))
                             then
                                 let message = sprintf "Missing parameter '%s' of type %s" requiredParameter.Name requiredParameter.DataType.Name
                                 yield createWarning message queryParamsRange
 
                         for providedParam in queryParams do
-                            if not (requiredParameters |> List.exists (fun p -> p.Name = providedParam.parameter.TrimStart('@')))
-                            then
+                            if isRedundant providedParam then
+                                yield createWarning (sprintf "Provided parameter '%s' is redundant. The query does not require such parameter" providedParam.name) providedParam.range
+
+                            else if isUnknown providedParam then
+
+                                // parameters that haven't been provided yet
+                                let remainingParameters =
+                                    requiredParameters
+                                    |> List.filter (fun requiredParam -> not (queryParams |> List.exists (fun queryParam -> queryParam.name = requiredParam.Name)))
+
                                 let levenshtein = new NormalizedLevenshtein()
                                 let closestAlternative =
-                                    requiredParameters
-                                    |> List.minBy (fun parameter -> levenshtein.Distance(parameter.Name, providedParam.parameter))
+                                    remainingParameters
+                                    |> List.minBy (fun parameter -> levenshtein.Distance(parameter.Name, providedParam.name))
                                     |> fun parameter -> parameter.Name
 
                                 let expectedParameters =
-                                    requiredParameters
+                                    remainingParameters
                                     |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
                                     |> String.concat ", "
                                     |> sprintf "Required parameters are [%s]."
-                                yield createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.parameter closestAlternative expectedParameters) providedParam.range
+
+                                let codeFixes =
+                                    remainingParameters
+                                    |> List.map (fun p ->
+                                        { FromRange = providedParam.range
+                                          FromText = providedParam.name
+                                          ToText = sprintf "\"%s\"" p.Name })
+
+                                let warning = createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.name closestAlternative expectedParameters) providedParam.range
+
+                                yield { warning with Fixes = codeFixes }
                     ]
 
     let findColumn (name: string) (availableColumns: InformationSchema.Column list) =
@@ -176,22 +204,20 @@ module SqlAnalysis =
         try Result.Ok (InformationSchema.getDbSchemaLookups(connectionString))
         with | ex -> Result.Error ex.Message
 
-    let analyzeBlock (operation: SqlOperation) (connectionString: string) : Message list =
+    /// Uses database schema that is retrieved once during initialization
+    /// and re-used when analyzing the rest of the Sql operation blocks
+    let analyzeOperation (operation: SqlOperation) (connectionString: string) (schema: InformationSchema.DbSchemaLookups) =
         match findQuery operation with
         | None ->
             [ ]
         | Some (query, queryRange) ->
-            match databaseSchema connectionString with
-            | Result.Error connectionError ->
-                [ createWarning connectionError queryRange ]
-            | Result.Ok schema ->
-                let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
-                match queryAnalysis with
-                | Result.Error queryError ->
-                    [ createWarning queryError queryRange ]
-                | Result.Ok (parameters, outputColunms) ->
-                    let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
-                    [
-                        yield! analyzeParameters operation parameters
-                        yield! analyzeColumnReadingAttempts readingAttempts outputColunms
-                    ]
+            let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
+            match queryAnalysis with
+            | Result.Error queryError ->
+                [ createWarning queryError queryRange ]
+            | Result.Ok (parameters, outputColunms) ->
+                let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
+                [
+                    yield! analyzeParameters operation parameters
+                    yield! analyzeColumnReadingAttempts readingAttempts outputColunms
+                ]

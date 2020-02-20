@@ -1,3 +1,10 @@
+#### 1.9.0 - 2020-02-20
+* Optimize number of database calls by reusing the database schema on each invokation
+* Detect redundant query parameters in a clear warning message
+* Provide code fixes and better suggestions for mismatched query parameters
+* Remove duplicate messages about missing parameters
+* Refactor and simplify parts of `InformatioSchema` and `SqlAnalysis`
+
 #### 1.8.0 - 2020-02-19
 * Provide column name fix suggestions when reading an unknown column
 

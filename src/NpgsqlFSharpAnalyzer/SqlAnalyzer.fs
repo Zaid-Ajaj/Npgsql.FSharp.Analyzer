@@ -15,6 +15,14 @@ module SqlAnalyzer =
                         SqlAnalysis.createWarning "Missing environment variable 'NPGSQL_FSHARP'. Please set that variable to the connection string of your development database" block.range
                 ]
             else
-                syntacticBlocks
-                |> List.collect (fun block -> SqlAnalysis.analyzeBlock block connectionString)
-                |> List.distinctBy (fun message -> message.Range)
+                match SqlAnalysis.databaseSchema connectionString with
+                | Result.Error connectionError ->
+                    [
+                        for block in syntacticBlocks ->
+                            SqlAnalysis.createWarning (sprintf "Error while connecting to the development database using the connection string from environment variable 'NPGSQL_FSHARP'. Connection error: %s" connectionError) block.range
+                    ]
+
+                | Result.Ok schema -> 
+                    syntacticBlocks
+                    |> List.collect (fun block -> SqlAnalysis.analyzeOperation block connectionString schema)
+                    |> List.distinctBy (fun message -> message.Range)

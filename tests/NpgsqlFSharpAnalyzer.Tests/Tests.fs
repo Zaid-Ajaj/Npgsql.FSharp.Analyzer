@@ -71,7 +71,7 @@ let tests =
                         Expect.equal query "SELECT COUNT(*) FROM users WHERE is_active = @is_active" "Literal string should be read correctly"
                         match SqlAnalysis.findParameters operation with
                         | Some ([ parameter ], range) ->
-                            Expect.equal "is_active" parameter.parameter "Parameter is correct"
+                            Expect.equal "is_active" parameter.name "Parameter is correct"
                         | otherwise ->
                             failwith "There should have been a parameter"
                     | None ->
@@ -199,14 +199,18 @@ let tests =
             match context (find "../examples/hashing/semanticAnalysis-missingColumn.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
-                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
-                match messages with
-                | [ message ] ->
-                    Expect.equal Severity.Warning message.Severity "The message is an warning"
-                    Expect.stringContains message.Message "non_existent" "Message should contain the missing column name"
-                | _ ->
-                    failwith "Expected only one error message"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.equal Severity.Warning message.Severity "The message is an warning"
+                        Expect.stringContains message.Message "non_existent" "Message should contain the missing column name"
+                    | _ ->
+                        failwith "Expected only one error message"
         }
 
         test "SQL query semantic analysis: missing parameter" {
@@ -221,13 +225,17 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
-                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
-                match messages with
-                | [ message ] ->
-                    Expect.equal Severity.Warning message.Severity "The message is a warning"
-                    Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
-                | _ ->
-                    failwith "Expected only one error message"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.equal Severity.Warning message.Severity "The message is a warning"
+                        Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
+                    | _ ->
+                        failwith "Expected only one error message"
         }
 
         test "SQL query semantic analysis: type mismatch" {
@@ -241,13 +249,17 @@ let tests =
             match context (find "../examples/hashing/semanticAnalysis-typeMismatch.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
-                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
-                match messages with
-                | [ message ] ->
-                    Expect.stringContains message.Message "Please use Sql.readBool instead" "Message contains suggestion to use Sql.readBool"
-                | _ ->
-                    failwith "Expected only one error message"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Please use Sql.readBool instead" "Message contains suggestion to use Sql.readBool"
+                    | _ ->
+                        failwith "Expected only one error message"
         }
 
         test "SQL query semantic analysis: redundant parameters" {
@@ -261,12 +273,16 @@ let tests =
             match context (find "../examples/hashing/semanticAnalysis-redundantParameters.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
-                let messages = SqlAnalysis.analyzeBlock block db.ConnectionString
-                match messages with
-                | [ message ] ->
-                    Expect.stringContains message.Message "Provided parameters are redundant" "Message contains suggestion to remove Sql.parameters"
-                | _ ->
-                    failwith "Expected only one error message"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Provided parameters are redundant" "Message contains suggestion to remove Sql.parameters"
+                    | _ ->
+                        failwith "Expected only one error message"
         }
     ]

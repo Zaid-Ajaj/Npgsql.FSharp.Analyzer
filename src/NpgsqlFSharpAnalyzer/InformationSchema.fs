@@ -159,53 +159,6 @@ module InformationSchema =
         member this.HasDefaultConstraint = string this.DefaultConstraint <> ""
         member this.OptionalForInsert = this.Nullable || this.HasDefaultConstraint || this.AutoIncrement
 
-        member this.ToDataColumnExpr() =
-            let typeName = 
-                let clrType = if this.ClrType.IsArray then typeof<Array> else this.ClrType
-                clrType.PartiallyQualifiedName
-     
-            let isTimestampTz = this.DataType.Name = "timestamptz" && this.ClrType = typeof<DateTime>
-            let isTimestamp = this.DataType.Name = "timestamp" && this.ClrType = typeof<DateTime>
-            let isJson = this.DataType.Name = "json"
-            let isJsonb = this.DataType.Name = "jsonb"
-            let isEnum = this.UDT.Value |> Option.exists (fun x -> not x.IsArray)
-        
-            <@@ 
-                let x = new DataColumn( %%Expr.Value(this.Name), Type.GetType( typeName, throwOnError = true))
-
-                x.AutoIncrement <- %%Expr.Value(this.AutoIncrement)
-                x.AllowDBNull <- %%Expr.Value(this.Nullable || this.HasDefaultConstraint)
-                x.ReadOnly <- %%Expr.Value(this.ReadOnly)
-
-                if x.DataType = typeof<string> then x.MaxLength <- %%Expr.Value(this.MaxLength)
-            
-                // control flow must be specified via simple bool switches as we are inside of quotation expression.
-                // Expr.Value can contain only boxed primitive types (not variables)
-                if isTimestampTz then
-                    //https://github.com/npgsql/npgsql/issues/1076#issuecomment-355400785
-                    x.DateTimeMode <- DataSetDateTime.Local
-                    //https://www.npgsql.org/doc/types/datetime.html#detailed-behavior-sending-values-to-the-database
-                    x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.ProviderType), %%Expr.Value(box NpgsqlDbType.TimestampTz))
-                elif isTimestamp then
-                    //https://github.com/npgsql/npgsql/issues/1076#issuecomment-355400785
-                    x.DateTimeMode <- DataSetDateTime.Local
-                    //https://www.npgsql.org/doc/types/datetime.html#detailed-behavior-sending-values-to-the-database
-                    x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.ProviderType), %%Expr.Value(box NpgsqlDbType.Timestamp))
-                elif isEnum then
-                    // value is an enum and should be sent to npgsql as unknown (auto conversion from string to appropriate enum type)
-                    x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.ProviderType), %%Expr.Value(box NpgsqlDbType.Unknown))
-                elif isJson then
-                    x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.ProviderType), %%Expr.Value(box NpgsqlDbType.Json))
-                elif isJsonb then
-                    x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.ProviderType), %%Expr.Value(box NpgsqlDbType.Jsonb))
-            
-                x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.IsKey), %%Expr.Value(box this.PartOfPrimaryKey))
-                x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.AllowDBNull), %%Expr.Value(box this.Nullable))
-                x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.BaseSchemaName), %%Expr.Value(box this.BaseSchemaName))
-                x.ExtendedProperties.Add(%%Expr.Value(box SchemaTableColumn.BaseTableName), %%Expr.Value(box this.BaseTableName))
-                x
-            @@>
-
     type DbEnum =
         { Name: string
           Values: string list }

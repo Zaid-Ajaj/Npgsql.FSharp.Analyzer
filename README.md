@@ -1,6 +1,6 @@
 # Npgsql.FSharp.Analyzer
 
-Analyzer that provides embedded **SQL syntax analysis** when writing queries using Npgsql.FSharp. It verifies querie syntax, checks the parameters in the query match with the provided parameters and performs **type-checking** on the functions that read columns from the result sets.
+Analyzer that provides embedded **SQL syntax analysis** when writing queries using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). It verifies query syntax, checks the parameters in the query match with the provided parameters and performs **type-checking** on the functions that read columns from the result sets.
 
 ![Demo](sql-syntax-analysis-type-checking.gif)]
 
@@ -34,7 +34,6 @@ Make sure you have these settings in Ionide for FSharp
 }
 ```
 Which instructs Ionide to load the analyzers from the directory of the analyzers into which `NpgsqlFSharpAnalyzer` was installed.
-
 
 ### Writing Long Multi-line Queries
 
@@ -127,17 +126,3 @@ Make sure you have a user with username and password called `postgres`.
 - `WatchDocs` - Generates documentation and starts a webserver locally.  It will rebuild and hot reload if it detects any changes made to `docsSrc` files, libraries in `src`, or the `docsTool` itself.
 - `ReleaseDocs` - Will stage, commit, and push docs generated in the `BuildDocs` target.
 ---
-
-### Releasing
-
-- [Add your NuGet API key to paket](https://fsprojects.github.io/Paket/paket-config.html#Adding-a-NuGet-API-key)
-
-```sh
-paket config add-token "https://www.nuget.org" 4003d786-cc37-4004-bfdf-c4f3e8ef9b3a
-```
-
-- [Create a GitHub OAuth Token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
-  - You can then set the `GITHUB_TOKEN` to upload release notes and artifacts to github
-  - Otherwise it will fallback to username/password
-
-- Then update the `RELEASE_NOTES.md` with a new version, date, and release notes [ReleaseNotesHelper](https://fsharp.github.io/FAKE/apidocs/fake-releasenoteshelper.html)
