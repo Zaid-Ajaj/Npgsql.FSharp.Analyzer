@@ -1,3 +1,9 @@
+#### 2.0.0 - 2020-02-24 
+* Update for Npgsql.FSharp 2.x 
+* Detect incorrect parameter type with code fixes
+* Detect redundant parameters
+* Detect nullable types and and suggest using proper function that handle null values
+
 #### 1.9.0 - 2020-02-20
 * Optimize number of database calls by reusing the database schema on each invokation
 * Detect redundant query parameters in a clear warning message

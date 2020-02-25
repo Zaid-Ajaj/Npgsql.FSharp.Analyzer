@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="parameterTypeMismatch.fs" />
+    <Compile Include="readAttemptIntegerTypeMismatch.fs" />
     <Compile Include="syntacticAnalysisSimpleQuery.fs" />
     <Compile Include="syntacticAnalysisExecuteScalar.fs" />
     <Compile Include="syntacticAnalysisProcessedList.fs" />
@@ -17,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql.FSharp" Version="1.19.0" />
+    <PackageReference Include="Npgsql.FSharp" Version="2.0.0-beta" />
   </ItemGroup>
 
 </Project>

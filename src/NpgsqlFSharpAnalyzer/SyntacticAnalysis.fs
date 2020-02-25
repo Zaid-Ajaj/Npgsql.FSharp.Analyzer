@@ -21,10 +21,10 @@ module SyntacticAnalysis =
         | _ -> None
 
     let (|Apply|_|) = function
-        | SynExpr.App(atomicFlag, isInfix, funcExpr, argExpr, range) ->
+        | SynExpr.App(atomicFlag, isInfix, funcExpr, argExpr, applicationRange) ->
             match funcExpr with
-            | SynExpr.Ident ident -> Some (ident.idText, argExpr, range)
-            | SynExpr.LongIdent(isOptional, longDotId, altName, range) ->
+            | SynExpr.Ident ident -> Some (ident.idText, argExpr, funcExpr.Range, applicationRange)
+            | SynExpr.LongIdent(isOptional, longDotId, altName, identRange) ->
                 match longDotId with
                 | LongIdentWithDots(listOfIds, ranges) ->
                     let fullName =
@@ -32,26 +32,39 @@ module SyntacticAnalysis =
                         |> List.map (fun id -> id.idText)
                         |> String.concat "."
                          
-                    Some (fullName, argExpr, range)
+                    Some (fullName, argExpr, funcExpr.Range, applicationRange)
             | _ -> None
         | _ -> None 
 
     let (|ParameterTuple|_|) = function
+        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); Apply(funcName, exprArgs, funcRange, appRange) ], commaRange, tupleRange) ->
+            Some (parameterName, paramRange, funcName, funcRange, Some appRange)
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); secondItem ], commaRange, tupleRange) ->
-            Some (parameterName, paramRange)
+            match secondItem with
+            | SynExpr.LongIdent(isOptional, longDotId, altName, identRange) ->
+                match longDotId with
+                | LongIdentWithDots(listOfIds, ranges) ->
+                    let fullName =
+                        listOfIds
+                        |> List.map (fun id -> id.idText)
+                        |> String.concat "."
+                         
+                    Some (parameterName, paramRange, fullName, identRange, None)
+            | _ ->
+                None
         | _ ->
             None
 
     let rec readParameters = function
-        | ParameterTuple (name, range) ->
-            [ name, range ]
+        | ParameterTuple (name, range, func, funcRange, appRange) ->
+            [ name, range, func, funcRange, appRange ]
         | SynExpr.Sequential(SequencePointInfoForSeq.SequencePointsAtSeq, isTrueSeq, expr1, expr2, seqRange) ->
             [ yield! readParameters expr1; yield! readParameters expr2 ]
         | _ ->
             [ ]
 
     let (|SqlParameters|_|) = function
-        | Apply ("Sql.parameters", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , range) ->
+        | Apply ("Sql.parameters", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
             match listExpr with
             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
                 Some (readParameters compExpr, compRange)
@@ -61,33 +74,78 @@ module SyntacticAnalysis =
             None
 
     let (|ReadColumnAttempt|_|) = function
-        | Apply(funcName, SynExpr.Const(SynConst.String(columnName, queryRange), constRange), range) ->
+        | Apply(funcName, SynExpr.Const(SynConst.String(columnName, queryRange), constRange), funcRange, appRange) ->
             if funcName.StartsWith "Sql.read" && funcName <> "Sql.readRow"
             then Some {
                 funcName = funcName
                 columnName = columnName
                 columnNameRange = constRange
-                funcCallRange = range }
+                funcCallRange = funcRange }
             else
-                None
+                let possibleFunctions = [
+                    ".int"
+                    ".intOrNull"
+                    ".bool"
+                    ".bootOrNull"
+                    ".text"
+                    ".textOrNull"
+                    ".int16"
+                    ".int16OrNull"
+                    ".int64"
+                    ".int64OrNull"
+                    ".string"
+                    ".stringOrNull"
+                    ".decimal"
+                    ".decimalOrNull"
+                    ".bytea"
+                    ".byteaOrNull"
+                    ".double"
+                    ".doubleOrNull"
+                    ".timestamp"
+                    ".timestampOrNull"
+                    ".timestamptz"
+                    ".timestamptzOrNull"
+                    ".uuid"
+                    ".uuidOrNull"
+                    ".float"
+                    ".floatOrNull"
+                    ".interval"
+                    ".date"
+                    ".dateOrNull"
+                    ".dateTime"
+                    ".dateTimeOrNull"
+                    ".intArray"
+                    ".intArrayOrNull"
+                    ".stringArray"
+                    ".stringArrayOrNull"
+                ]
+
+                if possibleFunctions |> List.exists funcName.EndsWith then
+                    Some {
+                        funcName = funcName
+                        columnName = columnName
+                        columnNameRange = constRange
+                        funcCallRange = funcRange }
+                else
+                    None
         | _ ->
            None
 
     /// Detects `Sql.query {SQL}` pattern
     let (|SqlQuery|_|) = function
-        | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range) ->
+        | Apply("Sql.query", SynExpr.Const(SynConst.String(query, queryRange), constRange), range, appRange) ->
             Some (query, constRange)
         | _ ->
             None
 
     let (|LiteralQuery|_|) = function
-        | Apply("Sql.query", SynExpr.Ident(identifier), range) ->
-            Some (identifier.idText, range)
+        | Apply("Sql.query", SynExpr.Ident(identifier), funcRange, appRange) ->
+            Some (identifier.idText, funcRange)
         | _ ->
             None
 
     let (|SqlStoredProcedure|_|) = function
-        | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), range) ->
+        | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), funcRange, appRange) ->
             Some (funcName, constRange)
         | _ ->
             None 
@@ -114,7 +172,7 @@ module SyntacticAnalysis =
         | SqlParameters(parameters, range) ->
             let sqlParameters =
                 parameters
-                |> List.map (fun (name, range) -> { name = name; range = range })
+                |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
             [ SqlAnalyzerBlock.Parameters(sqlParameters, range) ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
@@ -133,19 +191,115 @@ module SyntacticAnalysis =
         | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
             [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
-             [ yield! findReadColumnAttempts body ]
+             [ yield! findReadColumnAttempts body
+               for binding in bindings do
+               match binding with
+               | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
+                   yield! findReadColumnAttempts expr ]
+
         | SynExpr.LetOrUseBang(sequencePoint, isUse, isFromSource, syntaxPattern, expr1, expr2, range) ->
             [ yield! findReadColumnAttempts expr1; yield! findReadColumnAttempts expr2 ]
         | SynExpr.CompExpr(isArray, _, expression, range) ->
             [ yield! findReadColumnAttempts expression ]
+        | SynExpr.AnonRecd(isStruct, copyInfo, recordFields, range) ->
+            [
+                match copyInfo with
+                | Some(expr, info) -> yield! findReadColumnAttempts expr
+                | None -> ()
+
+                for (fieldName, fieldBody) in recordFields do
+                    yield! findReadColumnAttempts fieldBody
+            ]
+
+        | SynExpr.ArrayOrList(isList, elements, range) ->
+            [
+                for elementExpr in elements do
+                    yield! findReadColumnAttempts elementExpr
+            ]
+
+        | SynExpr.ArrayOrListOfSeqExpr (isArray, body, range) ->
+            [
+                yield! findReadColumnAttempts body
+            ]
+
+        | SynExpr.Record(info, copyInfo, recordFields, range) ->
+            [
+                for (fieldName, body, blockSep) in recordFields do
+                    match body with
+                    | Some bodyExpr ->  yield! findReadColumnAttempts bodyExpr
+                    | None -> ()
+            ]
+
+        | SynExpr.IfThenElse(ifExpr, elseExpr, thenExpr, _, _, _, _) ->
+            [
+                yield! findReadColumnAttempts ifExpr
+                yield! findReadColumnAttempts elseExpr
+                match thenExpr with
+                | Some expr -> yield! findReadColumnAttempts expr
+                | None -> ()
+            ]
+
+        | SynExpr.Lambda(_, _, args, body, range) ->
+            [
+                yield! findReadColumnAttempts body
+            ]
+
+        | SynExpr.Lazy(body, range) ->
+            [
+                yield! findReadColumnAttempts body
+            ]
+
+        | SynExpr.New(protocol, typeName, expr, range) ->
+            [
+                yield! findReadColumnAttempts expr
+            ]
+
+        | SynExpr.Tuple (isStruct, exprs, commaRanges, range) ->
+            [
+                for expr in exprs do
+                    yield! findReadColumnAttempts expr
+            ]
+
+        | SynExpr.Match(seqPoint, matchExpr, clauses, range) ->
+            [
+                yield! findReadColumnAttempts matchExpr
+                for SynMatchClause.Clause(pattern, whenExpr, body, range, seqPoint) in clauses do
+                    yield! findReadColumnAttempts body
+                    match whenExpr with
+                    | Some body -> yield! findReadColumnAttempts body
+                    | None -> ()
+            ]
+
+        | SynExpr.MatchBang(seqPoint, matchExpr, clauses, range) ->
+            [
+                yield! findReadColumnAttempts matchExpr
+                for SynMatchClause.Clause(pattern, whenExpr, body, range, seqPoint) in clauses do
+                    yield! findReadColumnAttempts body
+                    match whenExpr with
+                    | Some body -> yield! findReadColumnAttempts body
+                    | None -> ()
+            ]
+
         | _ ->
             [ ]
+
 
     let rec visitSyntacticExpression (expr: SynExpr) (fullExpressionRange: range) =
         match expr with
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             match argExpr with
-            | Apply(("Sql.executeReader"|"Sql.executeReaderAsync"), lambdaExpr, _) ->
+            | Apply(("Sql.executeReader"|"Sql.executeReaderAsync"), lambdaExpr, _, appRange) ->
+                let columns = findReadColumnAttempts lambdaExpr
+                let blocks = [
+                    yield! findQuery funcExpr
+                    yield! findParameters funcExpr
+                    yield! findFunc funcExpr
+                    yield SqlAnalyzerBlock.ReadingColumns columns
+                ]
+
+                [ { blocks = blocks; range = range; } ]
+
+            | Apply(("Sql.execute"|"Sql.executeAsync"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
                     yield! findQuery funcExpr
@@ -174,7 +328,7 @@ module SyntacticAnalysis =
             | SqlParameters(parameters, range) ->
                 let sqlParameters =
                     parameters
-                    |> List.map (fun (name, range) -> { name = name.TrimStart('@'); range = range })
+                    |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
 
                 let blocks = [
                     yield! findQuery funcExpr
@@ -192,7 +346,7 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range; } ]
 
-            | Apply(anyOtherFunction, functionArg, range) ->
+            | Apply(anyOtherFunction, functionArg, range, appRange) ->
                 let blocks = [
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
@@ -241,7 +395,7 @@ module SyntacticAnalysis =
 
         { operation with blocks = modifiedBlocks }
 
-    let findSqlBlocks (ctx: Context) =
+    let findSqlOperations (ctx: Context) =
         let operations = ResizeArray<SqlOperation>()
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->

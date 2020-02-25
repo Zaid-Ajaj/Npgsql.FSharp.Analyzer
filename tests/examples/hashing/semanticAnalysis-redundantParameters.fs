@@ -9,5 +9,5 @@ let findUsers() =
     connectionString
     |> Sql.connect
     |> Sql.query "SELECT * FROM users"
-    |> Sql.parameters [ "user_id", Sql.Value 42 ]
-    |> Sql.executeReaderAsync (Sql.readRow >> Sql.readString "username")
+    |> Sql.parameters [ "user_id", Sql.int 42 ]
+    |> Sql.execute (fun read -> read.text "username")

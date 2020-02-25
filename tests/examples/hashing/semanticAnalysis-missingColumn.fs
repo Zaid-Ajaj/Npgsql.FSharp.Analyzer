@@ -9,11 +9,9 @@ let findUsers() =
     connectionString
     |> Sql.connect
     |> Sql.query "SELECT non_existent FROM users"
-    |> Sql.executeReaderAsync (fun reader ->
-        let row = Sql.readRow reader
-        option {
-            let! user_id = Sql.readLong "user_id" row
-            let! username = Sql.readString "username" row
-            let! active = Sql.readBool "active" row
-            return (user_id, username, active)
-        })
+    |> Sql.executeAsync (fun read ->
+        {|
+            userId = read.int "user_id"
+            username = read.text "username"
+            active = read.bool "active"
+        |})

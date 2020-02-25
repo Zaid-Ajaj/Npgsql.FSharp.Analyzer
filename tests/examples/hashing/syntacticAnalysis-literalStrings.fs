@@ -12,4 +12,4 @@ let findUsers() =
     connectionString
     |> Sql.connect 
     |> Sql.query maskedQuery
-    |> Sql.executeReaderAsync (Sql.readRow >> Sql.readString "username")
+    |> Sql.executeAsync (fun read -> read.text "username")

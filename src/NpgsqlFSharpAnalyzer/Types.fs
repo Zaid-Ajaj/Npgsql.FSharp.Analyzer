@@ -11,7 +11,10 @@ type ColumnReadAttempt = {
 
 type UsedParameter = {
     name : string
-    range : range 
+    range : range
+    paramFunc : string
+    paramFuncRange : range
+    applicationRange : range option
 }
 
 [<RequireQualifiedAccess>]

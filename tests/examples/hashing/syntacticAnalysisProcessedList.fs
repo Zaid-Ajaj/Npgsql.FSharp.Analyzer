@@ -9,6 +9,8 @@ let findUsernames() =
     connectionString
     |> Sql.connect
     |> Sql.query "SELECT * FROM users"
-    |> Sql.executeReader (Sql.readRow >> Sql.readString "username")
-    |> String.concat ", "
-    |> printfn "Usernames are %s"
+    |> Sql.execute (fun read -> read.text "username")
+    |> function
+        | Error error -> None 
+        | Ok users -> Some users
+    |> Option.map List.isEmpty

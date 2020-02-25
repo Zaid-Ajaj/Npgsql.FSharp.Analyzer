@@ -2,7 +2,16 @@
 
 Analyzer that provides embedded **SQL syntax analysis** when writing queries using [Npgsql.FSharp](https://github.com/Zaid-Ajaj/Npgsql.FSharp). It verifies query syntax, checks the parameters in the query match with the provided parameters and performs **type-checking** on the functions that read columns from the result sets.
 
-![Demo](sql-syntax-analysis-type-checking.gif)]
+![Demo](sql.gif)]
+
+## Features
+- Static query syntax analysis and type-checking against development database
+- Detecting missing or redundant parameters
+- Detecting parameters with type-mismatch
+- Verifying the columns being read from the result set and their types
+- Detecting nullable columns
+- Built-in code fixes for most of the above
+- Free
 
 ## NuGet
 

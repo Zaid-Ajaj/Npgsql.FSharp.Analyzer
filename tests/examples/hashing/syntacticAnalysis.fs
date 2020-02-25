@@ -9,13 +9,12 @@ let findSingleUser(userId: int) =
     connectionString
     |> Sql.connect
     |> Sql.query "SELECT * FROM users WHERE user_id = @user_id"
-    |> Sql.parameters [ "@user_id", Sql.Value userId ]
-    |> Sql.executeReaderAsync (fun reader ->
-        let row = Sql.readRow reader
+    |> Sql.parameters [ "@user_id", Sql.int userId ]
+    |> Sql.executeAsync (fun read ->
         option {
-            let! username = Sql.readString "username" row
-            let! user_id = Sql.readInt "user_id" row
-            let! active = Sql.readBool "active" row
+            let username = read.text "username"
+            let user_id = read.int "user_id" 
+            let active = read.bool "active"
             return (username, user_id, active)
         })
 
@@ -23,23 +22,23 @@ let findUsers() =
     Sql.host "localhost"
     |> Sql.connectFromConfig
     |> Sql.query "SELECT * FROM users"
-    |> Sql.parameters [ "@whatever", Sql.Value false; "@another", Sql.Value false ]
-    |> Sql.executeReaderAsync (fun reader ->
-        let row = Sql.readRow reader
+    |> Sql.parameters [ "@whatever", Sql.bit false; "@another", Sql.int 12 ]
+    |> Sql.executeAsync (fun read ->
         option {
-            let! username = Sql.readString "username" row
-            let! user_id = Sql.readInt "user_id" row
-            return (username, user_id)
+            let username = read.text "username"
+            let user_id = read.int "user_id" 
+            let active = read.bool "active"
+            return (username, user_id, active)
         })
 
 let findNumberOfUsers() = 
     Sql.host "localhost"
     |> Sql.connectFromConfig
-    |> Sql.query "SELECT COUNT(*)::text as count FROM users"
-    |> Sql.executeReader (Sql.readRow >> Sql.readInt "count")
+    |> Sql.query "SELECT COUNT(*) as count FROM users"
+    |> Sql.executeSingleRow (fun read -> read.int64 "count")
 
 let executeFunction() =
     Sql.host "localhost"
     |> Sql.connectFromConfig
     |> Sql.func "getNumberOfUsers"
-    |> Sql.executeReader (Sql.readRow >> Sql.readString "username")
+    |> Sql.execute (fun read -> read.text "username")

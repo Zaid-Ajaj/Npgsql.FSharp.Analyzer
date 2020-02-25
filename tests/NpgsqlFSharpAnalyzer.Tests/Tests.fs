@@ -30,7 +30,7 @@ let tests =
             match context (find "../examples/hashing/syntacticAnalysis.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let operationBlocks = SyntacticAnalysis.findSqlBlocks context
+                let operationBlocks = SyntacticAnalysis.findSqlOperations context
                 Expect.equal 4 (List.length operationBlocks) "Found four operation blocks"
         }
 
@@ -38,7 +38,7 @@ let tests =
             match context (find "../examples/hashing/syntacticAnalysis-literalStrings.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                match SyntacticAnalysis.findSqlBlocks context with
+                match SyntacticAnalysis.findSqlOperations context with
                 | [ operation ] ->
                     match SqlAnalysis.findQuery operation with
                     | Some(query, range) -> Expect.equal query "SELECT * FROM users" "Literal string should be read correctly"
@@ -51,7 +51,7 @@ let tests =
             match context (find "../examples/hashing/syntacticAnalysisSimpleQuery.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                match SyntacticAnalysis.findSqlBlocks context with
+                match SyntacticAnalysis.findSqlOperations context with
                 | [ operation ] ->
                     match SqlAnalysis.findQuery operation with
                     | Some(query, range) -> Expect.equal query "SELECT COUNT(*) FROM users" "Literal string should be read correctly"
@@ -64,11 +64,11 @@ let tests =
             match context (find "../examples/hashing/syntacticAnalysisExecuteScalar.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                match SyntacticAnalysis.findSqlBlocks context with
+                match SyntacticAnalysis.findSqlOperations context with
                 | [ operation ] ->
                     match SqlAnalysis.findQuery operation with
                     | Some(query, range) ->
-                        Expect.equal query "SELECT COUNT(*) FROM users WHERE is_active = @is_active" "Literal string should be read correctly"
+                        Expect.equal query "SELECT COUNT(*) as Count FROM users WHERE is_active = @is_active" "Literal string should be read correctly"
                         match SqlAnalysis.findParameters operation with
                         | Some ([ parameter ], range) ->
                             Expect.equal "is_active" parameter.name "Parameter is correct"
@@ -80,18 +80,43 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Semantic Analysis: parameter type mismatch" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/parameterTypeMismatch.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.equal Severity.Warning message.Severity "The message is an warning"
+                        Expect.stringContains message.Message "Sql.int64" "Message should contain the missing column name"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
         test "Syntactic Analysis: reading queries with extra processing after Sql.executeReader" {
             match context (find "../examples/hashing/syntacticAnalysisProcessedList.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                match SyntacticAnalysis.findSqlBlocks context with
+                match SyntacticAnalysis.findSqlOperations context with
                 | [ operation ] ->
                     match SqlAnalysis.findQuery operation with
                     | Some(query, range) ->
                         Expect.equal query "SELECT * FROM users" "Query should be read correctly"
                         match SqlAnalysis.findColumnReadAttempts operation with
                         | Some [ attempt ] ->
-                            Expect.equal attempt.funcName "Sql.readString" "Function name is correct"
+                            Expect.equal attempt.funcName "read.text" "Function name is correct"
                             Expect.equal attempt.columnName "username" "Column name is read correctly"
                         | otherwise ->
                             failwith "Should have found one column read attempt"
@@ -203,7 +228,7 @@ let tests =
                 | Result.Error connectionError ->
                     failwith connectionError
                 | Result.Ok schema ->
-                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
@@ -224,7 +249,7 @@ let tests =
             match context (find "../examples/hashing/semanticAnalysis-missingParameter.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
-                let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
                 match SqlAnalysis.databaseSchema db.ConnectionString with
                 | Result.Error connectionError ->
                     failwith connectionError
@@ -253,11 +278,35 @@ let tests =
                 | Result.Error connectionError ->
                     failwith connectionError
                 | Result.Ok schema ->
-                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
-                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.stringContains message.Message "Please use Sql.readBool instead" "Message contains suggestion to use Sql.readBool"
+                        Expect.stringContains message.Message "Please use one of [read.bool] instead" "Message contains suggestion to use Sql.readBool"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: type mismatch with integer/serial" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/readAttemptIntegerTypeMismatch.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "read.int" "Message contains suggestion to use Sql.readBool"
                     | _ ->
                         failwith "Expected only one error message"
         }
@@ -277,7 +326,7 @@ let tests =
                 | Result.Error connectionError ->
                     failwith connectionError
                 | Result.Ok schema ->
-                    let block = List.exactlyOne (SyntacticAnalysis.findSqlBlocks context)
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
