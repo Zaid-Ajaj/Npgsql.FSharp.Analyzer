@@ -139,44 +139,44 @@ module SqlAnalysis =
 
                                 match requiredParam.DataType.Name with
                                 | "bit" ->
-                                    if providedParam.paramFunc <> "Sql.bit" &&  providedParam.paramFunc <> "Sql.bitOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.bit"; "Sql.bitOrNull";"Sql.dbnull"]
+                                    if providedParam.paramFunc <> "Sql.bit" &&  providedParam.paramFunc <> "Sql.bitOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.bit"; "Sql.bitOrNone";"Sql.dbnull"]
                                 | ("bool" | "boolean") ->
-                                    if providedParam.paramFunc <> "Sql.bool" &&  providedParam.paramFunc <> "Sql.boolOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.bool"; "Sql.boolOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.bool" &&  providedParam.paramFunc <> "Sql.boolOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.bool"; "Sql.boolOrNone"; "Sql.dbnull" ]
                                 | ("int" | "int32" | "integer" | "serial") ->
-                                    if providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.intOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.int"; "Sql.intOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.intOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.int"; "Sql.intOrNone"; "Sql.dbnull" ]
                                 | ("smallint" | "int16") ->
-                                    if providedParam.paramFunc <> "Sql.int16" &&  providedParam.paramFunc <> "Sql.int16OrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.int16"; "Sql.int16OrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.int16" &&  providedParam.paramFunc <> "Sql.int16OrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.int16"; "Sql.int16OrNone"; "Sql.dbnull" ]
                                 | ("int64" | "bigint" |"bigserial") ->
-                                    if providedParam.paramFunc <> "Sql.int64" &&  providedParam.paramFunc <> "Sql.int64OrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.int64"; "Sql.int64OrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.int64" &&  providedParam.paramFunc <> "Sql.int64OrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.int64"; "Sql.int64OrNone"; "Sql.dbnull" ]
                                 | ("numeric" | "decimal" | "money") ->
-                                    if providedParam.paramFunc <> "Sql.decimal" &&  providedParam.paramFunc <> "Sql.decimalOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.decimal"; "Sql.decimalOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.decimal" &&  providedParam.paramFunc <> "Sql.decimalOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.decimal"; "Sql.decimalOrNone"; "Sql.dbnull" ]
                                 | "double precision" ->
-                                    if providedParam.paramFunc <> "Sql.double" &&  providedParam.paramFunc <> "Sql.doubleOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.double"; "Sql.doubleOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.double" &&  providedParam.paramFunc <> "Sql.doubleOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.double"; "Sql.doubleOrNone"; "Sql.dbnull" ]
                                 | "bytea" ->
-                                    if providedParam.paramFunc <> "Sql.bytea" &&  providedParam.paramFunc <> "Sql.byteaOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.bytea"; "Sql.byteaOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.bytea" &&  providedParam.paramFunc <> "Sql.byteaOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.bytea"; "Sql.byteaOrNone"; "Sql.dbnull" ]
                                 | "uuid" ->
-                                    if providedParam.paramFunc <> "Sql.uuid" &&  providedParam.paramFunc <> "Sql.uuidOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.uuid"; "Sql.uuidOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.uuid" &&  providedParam.paramFunc <> "Sql.uuidOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.uuid"; "Sql.uuidOrNone"; "Sql.dbnull" ]
                                 | "date" ->
-                                    if providedParam.paramFunc <> "Sql.date" &&  providedParam.paramFunc <> "Sql.dateOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.date"; "Sql.dateOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.date" &&  providedParam.paramFunc <> "Sql.dateOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.date"; "Sql.dateOrNone"; "Sql.dbnull" ]
                                 | ("timestamp"|"timestamp without time zone") ->
-                                    if providedParam.paramFunc <> "Sql.timestamp" &&  providedParam.paramFunc <> "Sql.timestampOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.timestamp"; "Sql.timestampOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.timestamp" &&  providedParam.paramFunc <> "Sql.timestampOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.timestamp"; "Sql.timestampOrNone"; "Sql.dbnull" ]
                                 | ("timestamptz" | "timestamp with time zone") ->
-                                    if providedParam.paramFunc <> "Sql.timestamptz" &&  providedParam.paramFunc <> "Sql.timestamptzOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.timestamptz"; "Sql.timestamptzOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.timestamptz" &&  providedParam.paramFunc <> "Sql.timestamptzOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.timestamptz"; "Sql.timestamptzOrNone"; "Sql.dbnull" ]
                                 | ("text"|"json"|"xml"|"jsonb") ->
-                                    if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNull" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNull" && providedParam.paramFunc <> "Sql.dbnull"
-                                    then yield typeMismatch [ "Sql.text"; "Sql.string"; "Sql.textOrNull"; "Sql.stringOrNull"; "Sql.dbnull" ]
+                                    if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                    then yield typeMismatch [ "Sql.text"; "Sql.string"; "Sql.textOrNone"; "Sql.stringOrNone"; "Sql.dbnull" ]
                                 | _ ->
                                     ()
                 ]
@@ -275,155 +275,155 @@ module SqlAnalysis =
 
                         match column.DataType.Name with
                         ("bit"|"bool"|"boolean") ->
-                            if column.Nullable && notUsing "boolOrNull"
-                            then yield typeMismatch [ replace "boolOrNull" ]
-                            // else if not column.Nullable && using "boolOrNull"
+                            if column.Nullable && notUsing "boolOrNone"
+                            then yield typeMismatch [ replace "boolOrNone" ]
+                            // else if not column.Nullable && using "boolOrNone"
                             // then yield typeMismatch [ replace "bool" ]
-                            else if notUsing "boolOrNull" && notUsing "bool"
+                            else if notUsing "boolOrNone" && notUsing "bool"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "boolOrNull" ]
+                                then yield typeMismatch [ replace "boolOrNone" ]
                                 else yield typeMismatch [ replace "bool" ]
                             else ()
 
                         | ("int8" | "tinyint") ->
-                            if column.Nullable && List.forall notUsing [ "int8orNull"; "int16OrNull"; "intOrNull"; "int64OrNull" ]
-                            then yield typeMismatch [ replace "int8OrNull"; replace "int16OrNull"; replace "intOrNull"; replace "int64OrNull" ]
-                            // else if not column.Nullable && using "int8OrNull"
+                            if column.Nullable && List.forall notUsing [ "int8OrNone"; "int16OrNone"; "intOrNone"; "int64OrNone" ]
+                            then yield typeMismatch [ replace "int8OrNone"; replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
+                            // else if not column.Nullable && using "int8OrNone"
                             // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int16OrNull"
+                            // else if not column.Nullable && using "int16OrNone"
                             // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "intdOrNull"
+                            // else if not column.Nullable && using "intdOrNone"
                             // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int64OrNull"
+                            // else if not column.Nullable && using "int64OrNone"
                             // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            else if List.forall notUsing [ "int8OrNull"; "int16OrNull"; "intOrNull"; "int64OrNull"; "int8"; "int16"; "int"; "int64" ]
+                            else if List.forall notUsing [ "int8OrNone"; "int16OrNone"; "intOrNone"; "int64OrNone"; "int8"; "int16"; "int"; "int64" ]
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "int8OrNull"; replace "int16OrNull"; replace "intOrNull"; replace "int64OrNull" ]
+                                then yield typeMismatch [ replace "int8OrNone"; replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
                                 else yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
 
                         | ("int16"| "smallint") ->
-                            if column.Nullable && List.forall notUsing [ "int16OrNull"; "intOrNull"; "int64OrNull" ]
-                            then yield typeMismatch [ replace "int16OrNull"; replace "intOrNull"; replace "int64OrNull" ]
-                            //else if not column.Nullable && using "int16OrNull"
+                            if column.Nullable && List.forall notUsing [ "int16OrNone"; "intOrNone"; "int64OrNone" ]
+                            then yield typeMismatch [ replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
+                            //else if not column.Nullable && using "int16OrNone"
                             //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
-                            //else if not column.Nullable && using "intOrNull"
+                            //else if not column.Nullable && using "intOrNone"
                             //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
-                            //else if not column.Nullable && using "int64OrNull"
+                            //else if not column.Nullable && using "int64OrNone"
                             //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
-                            else if List.forall notUsing [ "int16OrNull"; "intOrNull"; "int64OrNull"; "int16"; "int"; "int64" ]
+                            else if List.forall notUsing [ "int16OrNone"; "intOrNone"; "int64OrNone"; "int16"; "int"; "int64" ]
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "int16OrNull"; replace "intOrNull"; replace "int64OrNull" ]
+                                then yield typeMismatch [ replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
                                 else yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
 
                         | ("int"|"integer"|"int32"|"serial"|"int4") ->
-                            if column.Nullable && List.forall notUsing [ "intOrNull"; "int64OrNull" ]
-                            then yield typeMismatch [ replace "intOrNull"; replace "int64OrNull" ]
-                            // else if not column.Nullable && using "intOrNull"
+                            if column.Nullable && List.forall notUsing [ "intOrNone"; "int64OrNone" ]
+                            then yield typeMismatch [ replace "intOrNone"; replace "int64OrNone" ]
+                            // else if not column.Nullable && using "intOrNone"
                             // then yield typeMismatch [ replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int64OrNull"
+                            // else if not column.Nullable && using "int64OrNone"
                             // then yield typeMismatch [ replace "int"; replace "int64" ]
-                            else if List.forall notUsing [ "intOrNull"; "int64OrNull"; "int"; "int64" ]
+                            else if List.forall notUsing [ "intOrNone"; "int64OrNone"; "int"; "int64" ]
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "intOrNull"; replace "int64OrNull" ]
+                                then yield typeMismatch [ replace "intOrNone"; replace "int64OrNone" ]
                                 else yield typeMismatch [ replace "int"; replace "int64" ]
 
                         | ("int64"|"bigint"|"bigserial") ->
-                            if column.Nullable && notUsing "int64OrNull"
-                            then yield typeMismatch [ replace "int64OrNull" ]
-                            // else if not column.Nullable && using "int64OrNull"
+                            if column.Nullable && notUsing "int64OrNone"
+                            then yield typeMismatch [ replace "int64OrNone" ]
+                            // else if not column.Nullable && using "int64OrNone"
                             // then yield typeMismatch [ replace "int64" ]
-                            else if notUsing "int64OrNull" && notUsing "int64"
+                            else if notUsing "int64OrNone" && notUsing "int64"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "int64OrNull" ]
+                                then yield typeMismatch [ replace "int64OrNone" ]
                                 else yield typeMismatch [ replace "int64" ]
                             else ()
 
                         | ("numeric"|"decimal"|"money") ->
-                            if column.Nullable && notUsing "decimalOrNull"
-                            then yield typeMismatch [ replace "decimalOrNull" ]
-                            // else if not column.Nullable && using "decimalOrNull"
+                            if column.Nullable && notUsing "decimalOrNone"
+                            then yield typeMismatch [ replace "decimalOrNone" ]
+                            // else if not column.Nullable && using "decimalOrNone"
                             // then yield typeMismatch [ replace "decimal" ]
-                            else if notUsing "decimalOrNull" && notUsing "decimal"
+                            else if notUsing "decimalOrNone" && notUsing "decimal"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "decimalOrNull" ]
+                                then yield typeMismatch [ replace "decimalOrNone" ]
                                 else yield typeMismatch [ replace "decimal" ]
                             else ()
 
                         | "double precision" ->
-                            if column.Nullable && notUsing "doubleOrNull"
-                            then yield typeMismatch [ replace "doubleOrNull" ]
-                            // else if not column.Nullable && using "doubleOrNull"
+                            if column.Nullable && notUsing "doubleOrNone"
+                            then yield typeMismatch [ replace "doubleOrNone" ]
+                            // else if not column.Nullable && using "doubleOrNone"
                             // then yield typeMismatch [ replace "double" ]
-                            else if notUsing "doubleOrNull" && notUsing "double"
+                            else if notUsing "doubleOrNone" && notUsing "double"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "doubleOrNull" ]
+                                then yield typeMismatch [ replace "doubleOrNone" ]
                                 else yield typeMismatch [ replace "double" ]
                             else ()
 
                         | ("text"|"json"|"xml"|"jsonb") ->
-                            if column.Nullable && notUsing "textOrNull" && notUsing "stringOrNull"
-                            then yield typeMismatch [ replace "textOrNull"; replace "stringOrNull" ]
-                            //else if not column.Nullable && (using "textOrNull" || using "stringOrNull")
+                            if column.Nullable && notUsing "textOrNone" && notUsing "stringOrNone"
+                            then yield typeMismatch [ replace "textOrNone"; replace "stringOrNone" ]
+                            //else if not column.Nullable && (using "textOrNone" || using "stringOrNone")
                             //then yield typeMismatch [ replace "text"; replace "string" ]
-                            else if notUsing "textOrNull" && notUsing "text" && notUsing "string" && notUsing "stringOrNull"
+                            else if notUsing "textOrNone" && notUsing "text" && notUsing "string" && notUsing "stringOrNone"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "textOrNull"; replace "stringOrText" ]
+                                then yield typeMismatch [ replace "textOrNone"; replace "stringOrText" ]
                                 else yield typeMismatch [ replace "text"; replace "string" ]
                             else ()
                              
                         | "date" ->
-                            if column.Nullable && notUsing "dateOrNull"
-                            then yield typeMismatch [ replace "dateOrNull" ]
-                            //else if not column.Nullable && using "dateOrNull"
+                            if column.Nullable && notUsing "dateOrNone"
+                            then yield typeMismatch [ replace "dateOrNone" ]
+                            //else if not column.Nullable && using "dateOrNone"
                             //then yield typeMismatch [ replace "date" ]
-                            else if notUsing "dateOrNull" && notUsing "date"
+                            else if notUsing "dateOrNone" && notUsing "date"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "dateOrNull" ]
+                                then yield typeMismatch [ replace "dateOrNone" ]
                                 else yield typeMismatch [ replace "date" ]
                             else ()
 
                         | ("timestamp"|"timestamp without time zone") ->
-                            if column.Nullable && notUsing "timestampOrNull" && notUsing "dateTimeOrNull"
-                            then yield typeMismatch [ replace "dateTimeOrNull"; replace "timestampOrNull" ]
-                            //else if not column.Nullable && (using "timestampOrNull" || using "dateTimeOrNull")
+                            if column.Nullable && notUsing "timestampOrNone" && notUsing "dateTimeOrNone"
+                            then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestampOrNone" ]
+                            //else if not column.Nullable && (using "timestampOrNone" || using "dateTimeOrNone")
                             //then yield typeMismatch [ replace "dateTime"; replace "timestamp" ]
-                            else if notUsing "timestampOrNull" && notUsing "timestamp" && notUsing "dateTimeOrNull" && notUsing "dateTime"
+                            else if notUsing "timestampOrNone" && notUsing "timestamp" && notUsing "dateTimeOrNone" && notUsing "dateTime"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "dateTimeOrNull"; replace "timestampOrNull" ]
+                                then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestampOrNone" ]
                                 else yield typeMismatch [ replace "dateTime"; replace "timestamp" ]
                             else ()
 
                         | ("timestamptz"|"timestamp with time zone") ->
-                            if column.Nullable && notUsing "timestamptzOrNull" && notUsing "dateTimeOrNull"
-                            then yield typeMismatch [ replace "dateTimeOrNull"; replace "timestamptzOrNull" ]
-                            //else if not column.Nullable && (using "timestamptzOrNull" || using "dateTimeOrNull")
+                            if column.Nullable && notUsing "timestamptzOrNone" && notUsing "dateTimeOrNone"
+                            then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
+                            //else if not column.Nullable && (using "timestamptzOrNone" || using "dateTimeOrNone")
                             //then yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
-                            else if notUsing "timestamptzOrNull" && notUsing "timestamptz" && notUsing "dateTimeOrNull" && notUsing "dateTime"
+                            else if notUsing "timestamptzOrNone" && notUsing "timestamptz" && notUsing "dateTimeOrNone" && notUsing "dateTime"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "dateTimeOrNull"; replace "timestamptzOrNull" ]
+                                then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
                                 else yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
                             else ()
 
                         | "bytea" ->
-                            if column.Nullable && notUsing "byteaOrNull"
-                            then yield typeMismatch [ replace "byteaOrNull" ]
-                            // else if not column.Nullable && using "byteaOrNull"
+                            if column.Nullable && notUsing "byteaOrNone"
+                            then yield typeMismatch [ replace "byteaOrNone" ]
+                            // else if not column.Nullable && using "byteaOrNone"
                             // then yield typeMismatch [ replace "bytea" ]
-                            else if notUsing "byteaOrNull" && notUsing "bytea"
+                            else if notUsing "byteaOrNone" && notUsing "bytea"
                             then
                                 if column.Nullable
-                                then yield typeMismatch [ replace "byteaOrNull" ]
+                                then yield typeMismatch [ replace "byteaOrNone" ]
                                 else yield typeMismatch [ replace "bytea" ]
                             else ()
                         | _ ->

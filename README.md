@@ -62,7 +62,7 @@ let activeUsers (connectionString: string) =
     |> Sql.connect
     |> Sql.query selectActiveUsers
     |> Sql.parameters [ "is_active", Sql.Value true ]
-    |> Sql.executeReader (Sql.readRow >> Sql.readString "username")
+    |> Sql.execute (fun read -> read.text "username")
 ```
 The `[<Literal>]` string has to be defined in the same module in order for the analysis to run properly.
 
@@ -75,7 +75,7 @@ let activeUsers (connectionString: string) =
     |> Sql.connect
     |> Sql.query selectActiveUsers
     |> Sql.parameters [ "is_active", Sql.Value true ]
-    |> Sql.executeReader (Sql.readRow >> Sql.readString "username")
+    |> Sql.execute (fun read -> read.text "username")
 ```
 Just remember that these `[<Literal>]` strings have to defined in the same module where the query is written.
 

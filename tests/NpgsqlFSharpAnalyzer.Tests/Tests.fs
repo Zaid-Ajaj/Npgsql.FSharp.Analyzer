@@ -60,7 +60,7 @@ let tests =
                     failwith "Should not happen"
         }
 
-        test "Syntactic Analysis: combination with Sql.executeScalar can be detected" {
+        test "Syntactic Analysis: combination with Sql functions can be detected" {
             match context (find "../examples/hashing/syntacticAnalysisExecuteScalar.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->

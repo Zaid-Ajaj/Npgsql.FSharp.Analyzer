@@ -1,5 +1,8 @@
-#### 2.0.0 - 2020-02-24 
-* Update for Npgsql.FSharp 2.x 
+#### 3.0.0 - 2020-02-26
+* Update for Npgsql.FSharp 3.x to be able to analyze column reading functions as `{type}OrNone` instead of `{type}OrNull`
+
+#### 2.0.0 - 2020-02-24
+* Update for Npgsql.FSharp 2.x
 * Detect incorrect parameter type with code fixes
 * Detect redundant parameters
 * Detect nullable types and and suggest using proper function that handle null values
