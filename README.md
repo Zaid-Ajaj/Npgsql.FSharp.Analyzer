@@ -62,7 +62,7 @@ let activeUsers (connectionString: string) =
     connectionString
     |> Sql.connect
     |> Sql.query selectActiveUsers
-    |> Sql.parameters [ "is_active", Sql.Value true ]
+    |> Sql.parameters [ "is_active", Sql.bit true ]
     |> Sql.execute (fun read -> read.text "username")
 ```
 The `[<Literal>]` string has to be defined in the same module in order for the analysis to run properly.
@@ -75,7 +75,7 @@ let activeUsers (connectionString: string) =
     connectionString
     |> Sql.connect
     |> Sql.query selectActiveUsers
-    |> Sql.parameters [ "is_active", Sql.Value true ]
+    |> Sql.parameters [ "is_active", Sql.bit true ]
     |> Sql.execute (fun read -> read.text "username")
 ```
 Just remember that these `[<Literal>]` strings have to defined in the same module where the query is written.
@@ -114,7 +114,7 @@ let createTestDatabase() =
     |> Sql.port 5432
     |> Sql.username "postgres"
     |> Sql.password "postgres"
-    |> Sql.str
+    |> Sql.formatConnectionString
     |> ThrowawayDatabase.Create
 ```
 Make sure you have a user with username and password called `postgres`.

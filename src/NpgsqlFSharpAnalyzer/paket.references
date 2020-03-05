@@ -1,6 +1,6 @@
-FSharp.Core
 Microsoft.SourceLink.GitHub
 Microsoft.NETFramework.ReferenceAssemblies
 FSharp.Analyzers.SDK
 Npgsql
 F23.StringSimilarity
+FSharp.Core

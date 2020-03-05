@@ -402,10 +402,8 @@ Target.create "WatchDocs" watchDocs
 // Target Dependencies
 //-----------------------------------------------------------------------------
 
-
-// Only call Clean if DotnetPack was in the call chain
 // Ensure Clean is called before DotnetRestore
-"Clean" ?=> "DotnetRestore"
+"Clean" ==> "DotnetRestore"
 "Clean" ==> "DotnetPack"
 
 // Only call AssemblyInfo if Publish was in the call chain

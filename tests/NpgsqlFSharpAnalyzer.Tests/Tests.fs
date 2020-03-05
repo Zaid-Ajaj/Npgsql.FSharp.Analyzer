@@ -12,7 +12,8 @@ let analyzers = [
 ]
 
 let inline find file = IO.Path.Combine(__SOURCE_DIRECTORY__ , file)
-let inline analyze file = AnalyzerBootstrap.runProject file analyzers
+let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/examples.fsproj")
+
 let inline context file = AnalyzerBootstrap.context file
 
 let createTestDatabase() =
@@ -20,7 +21,7 @@ let createTestDatabase() =
     |> Sql.port 5432
     |> Sql.username "postgres"
     |> Sql.password "postgres"
-    |> Sql.str
+    |> Sql.formatConnectionString
     |> ThrowawayDatabase.Create
 
 [<Tests>]

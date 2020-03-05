@@ -16,7 +16,7 @@ module SyntacticAnalysis =
                     listOfIds
                     |> List.map (fun id -> id.idText)
                     |> String.concat "."
-                     
+
                 Some fullName
         | _ -> None
 
@@ -31,10 +31,10 @@ module SyntacticAnalysis =
                         listOfIds
                         |> List.map (fun id -> id.idText)
                         |> String.concat "."
-                         
+
                     Some (fullName, argExpr, funcExpr.Range, applicationRange)
             | _ -> None
-        | _ -> None 
+        | _ -> None
 
     let (|ParameterTuple|_|) = function
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); Apply(funcName, exprArgs, funcRange, appRange) ], commaRange, tupleRange) ->
@@ -48,7 +48,7 @@ module SyntacticAnalysis =
                         listOfIds
                         |> List.map (fun id -> id.idText)
                         |> String.concat "."
-                         
+
                     Some (parameterName, paramRange, fullName, identRange, None)
             | _ ->
                 None
@@ -148,7 +148,7 @@ module SyntacticAnalysis =
         | Apply("Sql.func", SynExpr.Const(SynConst.String(funcName, funcNameRange), constRange), funcRange, appRange) ->
             Some (funcName, constRange)
         | _ ->
-            None 
+            None
 
     let rec findQuery = function
         | SqlQuery (query, range) ->
@@ -197,10 +197,17 @@ module SyntacticAnalysis =
                | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
                    yield! findReadColumnAttempts expr ]
 
-        | SynExpr.LetOrUseBang(sequencePoint, isUse, isFromSource, syntaxPattern, expr1, expr2, range) ->
-            [ yield! findReadColumnAttempts expr1; yield! findReadColumnAttempts expr2 ]
+        | SynExpr.LetOrUseBang(sequencePoint, isUse, isFromSource, syntaxPattern, expr1, andExprs, body, range) ->
+            [
+                yield! findReadColumnAttempts expr1
+                yield! findReadColumnAttempts body
+                for (pointInfo, _, _, pattern, expr, range) in andExprs do
+                    yield! findReadColumnAttempts expr
+            ]
+
         | SynExpr.CompExpr(isArray, _, expression, range) ->
             [ yield! findReadColumnAttempts expression ]
+
         | SynExpr.AnonRecd(isStruct, copyInfo, recordFields, range) ->
             [
                 match copyInfo with
@@ -311,7 +318,7 @@ module SyntacticAnalysis =
                 [ { blocks = blocks; range = range; } ]
 
             | SqlQuery(query, queryRange) ->
-                
+
                 let blocks = [
                     SqlAnalyzerBlock.Query(query, queryRange)
                 ]
@@ -383,7 +390,7 @@ module SyntacticAnalysis =
 
     /// Tries to replace [<Literal>] strings inside the module with the identifiers that were used with Sql.query.
     let applyLiterals (literals: Map<string, string>) (operation: SqlOperation) =
-        let modifiedBlocks = 
+        let modifiedBlocks =
             operation.blocks
             |> List.choose (function
                 | SqlAnalyzerBlock.LiteralQuery(identifier, range) ->
