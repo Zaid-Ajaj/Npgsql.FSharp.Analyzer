@@ -4,7 +4,7 @@ open FSharp.Analyzers.SDK
 open System
 
 module SqlAnalyzer =
-    [<Analyzer>]
+    [<Analyzer "Npgsql.FSharp.Analyzer">]
     let queryAnalyzer : Analyzer =
         fun (ctx: Context) ->
             let syntacticBlocks = SyntacticAnalysis.findSqlOperations ctx
@@ -22,7 +22,7 @@ module SqlAnalyzer =
                             SqlAnalysis.createWarning (sprintf "Error while connecting to the development database using the connection string from environment variable 'NPGSQL_FSHARP'. Connection error: %s" connectionError) block.range
                     ]
 
-                | Result.Ok schema -> 
+                | Result.Ok schema ->
                     syntacticBlocks
                     |> List.collect (fun block -> SqlAnalysis.analyzeOperation block connectionString schema)
                     |> List.distinctBy (fun message -> message.Range)

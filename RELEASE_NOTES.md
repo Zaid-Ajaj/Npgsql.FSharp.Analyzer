@@ -1,3 +1,6 @@
+#### 3.2.0 - 2020-03-05
+* Update FSharp.Analyzers SDK 0.3.1 -> 0.4.0 with named analyzers.
+
 #### 3.1.0 - 2020-03-05
 * Update FSharp.Analyzers SDK and compiler services to align types.
 
