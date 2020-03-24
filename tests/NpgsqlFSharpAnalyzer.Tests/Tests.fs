@@ -335,4 +335,29 @@ let tests =
                     | _ ->
                         failwith "Expected only one error message"
         }
+
+
+        ftest "SQL query semantic analysis: type mismatch with int arrays" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE ints (id uuid primary key, ints int array not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/semanticAnalysis-typeMismatchIntArrays.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Please use one of [read.intArray] instead" "Message contains suggestion to use RowReader.intArray"
+                    | messages ->
+                        failwithf "Expected only one error message, but got %d: %A" (List.length messages) messages
+        }
     ]

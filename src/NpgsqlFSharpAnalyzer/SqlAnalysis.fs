@@ -136,7 +136,6 @@ module SqlAnalysis =
                                             })
 
                                     { createWarning warning providedParam.paramFuncRange with Fixes = codeFixs }
-
                                 match requiredParam.DataType.Name with
                                 | "bit" ->
                                     if providedParam.paramFunc <> "Sql.bit" &&  providedParam.paramFunc <> "Sql.bitOrNone" && providedParam.paramFunc <> "Sql.dbnull"
@@ -299,9 +298,11 @@ module SqlAnalysis =
                             // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
                             else if List.forall notUsing [ "int8OrNone"; "int16OrNone"; "intOrNone"; "int64OrNone"; "int8"; "int16"; "int"; "int64" ]
                             then
+
                                 if column.Nullable
                                 then yield typeMismatch [ replace "int8OrNone"; replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
-                                else yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
+                                else
+                                    yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
 
                         | ("int16"| "smallint") ->
                             if column.Nullable && List.forall notUsing [ "int16OrNone"; "intOrNone"; "int64OrNone" ]
@@ -378,7 +379,7 @@ module SqlAnalysis =
                                 then yield typeMismatch [ replace "textOrNone"; replace "stringOrText" ]
                                 else yield typeMismatch [ replace "text"; replace "string" ]
                             else ()
-                             
+
                         | "date" ->
                             if column.Nullable && notUsing "dateOrNone"
                             then yield typeMismatch [ replace "dateOrNone" ]

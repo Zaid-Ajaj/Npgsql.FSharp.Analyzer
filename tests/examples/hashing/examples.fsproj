@@ -13,6 +13,7 @@
     <Compile Include="semanticAnalysis-missingColumn.fs" />
     <Compile Include="semanticAnalysis-missingParameter.fs" />
     <Compile Include="semanticAnalysis-typeMismatch.fs" />
+    <Compile Include="semanticAnalysis-typeMismatchIntArrays.fs" />
     <Compile Include="syntacticAnalysis-literalStrings.fs" />
     <Compile Include="semanticAnalysis-redundantParameters.fs" />
     <Compile Include="syntacticAnalysis.fs" />

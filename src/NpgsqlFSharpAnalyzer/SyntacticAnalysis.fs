@@ -118,6 +118,8 @@ module SyntacticAnalysis =
                     ".intArrayOrNone"
                     ".stringArray"
                     ".stringArrayOrNone"
+                    ".uuidArray"
+                    ".uuidArrayOrNone"
                 ]
 
                 if possibleFunctions |> List.exists funcName.EndsWith then
