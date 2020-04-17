@@ -1,3 +1,6 @@
+#### 3.3.0 - 2020-04-17
+* Update FSharp.Analyzers SDK 0.4.0 -> 0.4.1
+
 #### 3.2.0 - 2020-03-05
 * Update FSharp.Analyzers SDK 0.3.1 -> 0.4.0 with named analyzers.
 
