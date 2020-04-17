@@ -2,7 +2,7 @@ namespace Npgsql.FSharp.Analyzers
 
 open FSharp.Analyzers.SDK
 open FSharp.Compiler.SourceCodeServices
-open FSharp.Compiler.Ast
+open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.Range
 
 module SyntacticAnalysis =
@@ -58,7 +58,7 @@ module SyntacticAnalysis =
     let rec readParameters = function
         | ParameterTuple (name, range, func, funcRange, appRange) ->
             [ name, range, func, funcRange, appRange ]
-        | SynExpr.Sequential(SequencePointInfoForSeq.SequencePointsAtSeq, isTrueSeq, expr1, expr2, seqRange) ->
+        | SynExpr.Sequential(_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
             [ yield! readParameters expr1; yield! readParameters expr2 ]
         | _ ->
             [ ]

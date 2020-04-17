@@ -117,7 +117,17 @@ let createTestDatabase() =
     |> Sql.formatConnectionString
     |> ThrowawayDatabase.Create
 ```
-Make sure you have a user with username and password called `postgres`.
+Make sure you have a user with username and password called `postgres`.  An easy way to do this is to run the dockerized instance of postgres set up in the `docker-compose.yml` file in the root of this repository:
+
+```shell
+repo root> docker-compose up -d
+```
+
+This will spawn a PostgresQL 12 database with the expected username and password, bound to the default port 5432. When you are done testing, this database can be destroyed like so:
+
+```shell
+repo root> docker-compose down
+```
 
 ---
 
