@@ -1,3 +1,7 @@
+#### 3.4.0 - 2020-05-19
+* Search through nested modules and nested recursively
+* Configure the connection string of the analyzer via a local file
+
 #### 3.3.0 - 2020-04-17
 * Update FSharp.Analyzers SDK 0.4.0 -> 0.4.1
 

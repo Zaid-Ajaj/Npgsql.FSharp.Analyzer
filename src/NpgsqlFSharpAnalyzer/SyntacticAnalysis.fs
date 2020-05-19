@@ -411,18 +411,59 @@ module SyntacticAnalysis =
                 for parsedModule in modules do
                     match parsedModule with
                     | SynModuleOrNamespace(identifier, isRecursive, kind, declarations, _, _, _, _) ->
-                        for declaration in declarations do
-                            match declaration with
-                            | SynModuleDecl.Let(isRecursiveDef, bindings, range) ->
-                                for binding in bindings do
-                                    operations.AddRange (visitBinding binding)
-                            | _ ->
-                                ()
+                        let rec iterTypeDefs defs =
+                            for def in defs do
+                                match def with
+                                | SynTypeDefn.TypeDefn(typeInfo, typeRepr, members, range) ->
+                                    for memberDefn in members do
+                                        match memberDefn with
+                                        | SynMemberDefn.Member (binding, _) ->
+                                            operations.AddRange (visitBinding binding)
+                                        | SynMemberDefn.LetBindings (bindings, _, _, _) ->
+                                            for binding in bindings do
+                                                operations.AddRange (visitBinding binding)
+                                        | SynMemberDefn.NestedType (nestedTypeDef, _, _) ->
+                                            iterTypeDefs [ nestedTypeDef ]
+                                        | _ ->
+                                            ()
+
+                                    match typeRepr with
+                                    | SynTypeDefnRepr.ObjectModel (modelKind, members, range) ->
+                                        for memberDefn in members do
+                                            match memberDefn with
+                                            | SynMemberDefn.Member (binding, _) ->
+                                                operations.AddRange (visitBinding binding)
+                                            | SynMemberDefn.LetBindings (bindings, _, _, _) ->
+                                                for binding in bindings do
+                                                    operations.AddRange (visitBinding binding)
+                                            | SynMemberDefn.NestedType (nestedTypeDef, _, _) ->
+                                                iterTypeDefs [ nestedTypeDef ]
+                                            | _ ->
+                                                ()
+                                    | _ ->
+                                        ()
+
+                        let rec iterDeclarations decls =
+                            for declaration in decls do
+                                match declaration with
+                                | SynModuleDecl.Let(isRecursiveDef, bindings, range) ->
+                                    for binding in bindings do
+                                        operations.AddRange (visitBinding binding)
+                                | SynModuleDecl.NestedModule(moduleInfo, isRecursive, nestedDeclarations, _, _) ->
+                                    iterDeclarations nestedDeclarations
+
+                                | SynModuleDecl.Types(definitions, range)  -> 
+                                    iterTypeDefs definitions
+                                | _ ->
+                                    ()
+
+                        iterDeclarations declarations
 
         | ParsedInput.SigFile file ->
             ()
 
         let moduleLiterals = findLiterals ctx
+
         operations
         |> Seq.map (applyLiterals moduleLiterals)
         |> Seq.toList

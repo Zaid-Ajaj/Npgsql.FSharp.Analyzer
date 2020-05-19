@@ -35,10 +35,38 @@ let findNumberOfUsers() =
     Sql.host "localhost"
     |> Sql.connectFromConfig
     |> Sql.query "SELECT COUNT(*) as count FROM users"
-    |> Sql.executeSingleRow (fun read -> read.int64 "count")
+    |> Sql.execute (fun read -> read.int64 "count")
 
 let executeFunction() =
     Sql.host "localhost"
     |> Sql.connectFromConfig
     |> Sql.func "getNumberOfUsers"
     |> Sql.execute (fun read -> read.text "username")
+
+type Whatever() =
+    member this.Hello =
+        let whateverSql() = 
+            Sql.host "localhost"
+            |> Sql.connectFromConfig
+            |> Sql.query "SELECT COUNT(*) as count FROM users"
+            |> Sql.execute (fun read -> read.int64 "count")
+
+        ()
+
+module InsidePostgres =
+
+    let nextedDeclaretion() = 
+        Sql.host "localhost"
+        |> Sql.connectFromConfig
+        |> Sql.query "SELECT COUNT(*) as count FROM users"
+        |> Sql.execute (fun read -> read.int64 "count")
+
+    type NestedWhatever() =
+        member this.Hello =
+            let whateverSql() = 
+                Sql.host "localhost"
+                |> Sql.connectFromConfig
+                |> Sql.query "SELECT COUNT(*) as count FROM users"
+                |> Sql.execute (fun read -> read.int64 "count")
+
+            ()

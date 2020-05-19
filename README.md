@@ -16,15 +16,23 @@ Analyzer that provides embedded **SQL syntax analysis** when writing queries usi
 
 ## NuGet
 
-Package | Stable | Prerelease
---- | --- | ---
-NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/)
+| Package              | Stable                                                                                                                     | Prerelease                                                                                                                                         |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) |
 
 
 ## Using The Analyzer
 
-### 1 - Set `NPGSQL_FSHARP` environment variable
-The analyzer requires an environment variable named `NPGSQL_FSHARP` with a connection string that points to your development database. The analyzers uses this connection string to retrieve the schema of the database as well as the schema and column output of the result sets from the various queries.
+### 1 - Configure the connection string to your development database
+The analyzer requires a connection string that points to the database you are developing against. You can configure this connection string by either creating a file called `NPGSQL_FSHARP` (without extension) somewhere next to your F# project or preferably in the root of your workspace. This file should contain that connection string and nothing else. An example of the contents of such file:
+```
+Host=localhost; Username=postgres; Password=postgres; Database=databaseName
+```
+> Remember to add an entry in your .gitingore file to make sure you don't commit the connection string to your source version control system.
+
+Another way to configure the connection string is by setting the value of an environment variable named `NPGSQL_FSHARP` that contains the connection string.
+
+The analyzer will try to locate and read the file first, then falls back to using the environment variable.
 
 ### 2 - Install the analyzer using paket
 Use paket to install the analyzer into a specialized `Analyzers` dependency group like this:

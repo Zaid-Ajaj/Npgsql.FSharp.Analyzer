@@ -10,4 +10,4 @@ let findUsernames() =
     |> Sql.connect
     |> Sql.query "SELECT COUNT(*) as Count FROM users WHERE is_active = @is_active"
     |> Sql.parameters [ "is_active", Sql.bit true ]
-    |> Sql.executeSingleRow (fun read -> read.int64 "count")
+    |> Sql.execute (fun read -> read.int64 "count")
