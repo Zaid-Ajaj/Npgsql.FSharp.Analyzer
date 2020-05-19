@@ -1,3 +1,6 @@
+#### 3.6.0 - 2020-05-19
+* Add Sql.executeRow(Async) and Sql.iter(Async) to the analysis
+
 #### 3.5.0 - 2020-05-19
 * Expand syntactic analysis to include searching through (async) computation expressions
 

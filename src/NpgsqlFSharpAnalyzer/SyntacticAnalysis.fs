@@ -314,7 +314,7 @@ module SyntacticAnalysis =
 
                 [ { blocks = blocks; range = range; } ]
 
-            | Apply(("Sql.execute"|"Sql.executeAsync"), lambdaExpr, funcRange, appRange) ->
+            | Apply(("Sql.execute"|"Sql.executeAsync"|"Sql.executeRow"|"Sql.executeRowAsync"|"Sql.iter"|"Sql.iterAsync"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
                     yield! findQuery funcExpr
