@@ -1,3 +1,6 @@
+#### 3.5.0 - 2020-05-19
+* Expand syntactic analysis to include searching through (async) computation expressions
+
 #### 3.4.0 - 2020-05-19
 * Search through nested modules and nested recursively
 * Configure the connection string of the analyzer via a local file

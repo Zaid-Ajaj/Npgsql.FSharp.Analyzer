@@ -32,7 +32,7 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlOperations context
-                Expect.equal 7 (List.length operationBlocks) "Found four operation blocks"
+                Expect.equal 10 (List.length operationBlocks) "Found ten operation blocks"
         }
 
         test "Syntactic Analysis: reading queries with [<Literal>] query" {

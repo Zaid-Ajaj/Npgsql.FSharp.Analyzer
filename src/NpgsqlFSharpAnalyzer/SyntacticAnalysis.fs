@@ -293,8 +293,16 @@ module SyntacticAnalysis =
 
     let rec visitSyntacticExpression (expr: SynExpr) (fullExpressionRange: range) =
         match expr with
+        | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
+            visitSyntacticExpression innerExpr range
+        | SynExpr.YieldOrReturn(_, innerExpr, innerRange) ->
+            visitSyntacticExpression innerExpr innerRange
+        | SynExpr.YieldOrReturnFrom(_, innerExpr, innerRange) ->
+            visitSyntacticExpression innerExpr innerRange
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             match argExpr with
+            | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
+                visitSyntacticExpression innerExpr range
             | Apply(("Sql.executeReader"|"Sql.executeReaderAsync"), lambdaExpr, _, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
                 let blocks = [
@@ -368,6 +376,24 @@ module SyntacticAnalysis =
             [
                 yield! visitSyntacticExpression body range
                 for binding in bindings do yield! visitBinding binding
+            ]
+
+        | SynExpr.App(flag, _, SynExpr.Ident ident, SynExpr.CompExpr(_, _, innerExpr, innerExprRange), r) when ident.idText = "async" ->
+            visitSyntacticExpression innerExpr innerExprRange
+
+        | SynExpr.LetOrUseBang(_, isUse, isFromSource, pat, rhs, andBangs, body, range) ->
+            [
+                yield! visitSyntacticExpression body range
+                yield! visitSyntacticExpression rhs range
+            ]
+
+        | SynExpr.IfThenElse(ifExpr, thenExpr, elseExpr, _, _ ,ifToThenRange, range) ->
+            [
+                yield! visitSyntacticExpression ifExpr ifToThenRange
+                yield! visitSyntacticExpression thenExpr range
+                match elseExpr with
+                | None -> ()
+                | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
         | otherwise ->

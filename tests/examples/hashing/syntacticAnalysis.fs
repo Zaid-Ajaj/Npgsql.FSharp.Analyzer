@@ -53,6 +53,29 @@ type Whatever() =
 
         ()
 
+let doCoolStuff() = async {
+    return Sql.host "localhost"
+           |> Sql.connectFromConfig
+           |> Sql.query "SELECT COUNT(*) as count FROM users"
+           |> Sql.execute (fun read -> read.int64 "count")
+}
+
+let doCoolStuffAsync() = async {
+    return! Sql.host "localhost"
+           |> Sql.connectFromConfig
+           |> Sql.query "SELECT COUNT(*) as count FROM users"
+           |> Sql.executeAsync (fun read -> read.int64 "count")
+}
+
+let doCoolStuffAsyncWithLet() = async {
+    let! x =  Sql.host "localhost"
+           |> Sql.connectFromConfig
+           |> Sql.query "SELECT COUNT(*) as count FROM users"
+           |> Sql.executeAsync (fun read -> read.int64 "count")
+
+    return x; 
+}
+
 module InsidePostgres =
 
     let nextedDeclaretion() = 
