@@ -172,7 +172,7 @@ module SyntacticAnalysis =
         | SqlParameters(parameters, range) ->
             let sqlParameters =
                 parameters
-                |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
+                |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.Trim().TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
             [ SqlAnalyzerBlock.Parameters(sqlParameters, range) ]
 
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
@@ -343,7 +343,7 @@ module SyntacticAnalysis =
             | SqlParameters(parameters, range) ->
                 let sqlParameters =
                     parameters
-                    |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
+                    |> List.map (fun (name, range, func, funcRange, appRange) -> { name = name.Trim().TrimStart('@'); range = range; paramFunc = func; paramFuncRange = funcRange; applicationRange = appRange })
 
                 let blocks = [
                     yield! findQuery funcExpr
