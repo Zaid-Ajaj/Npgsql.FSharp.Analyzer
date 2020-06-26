@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="SprintfBlock.fs" />
     <Compile Include="parameterTypeMismatch.fs" />
     <Compile Include="readAttemptIntegerTypeMismatch.fs" />
     <Compile Include="syntacticAnalysisSimpleQuery.fs" />

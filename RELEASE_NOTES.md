@@ -1,3 +1,7 @@
+#### 3.8.0 - 2020-06-26
+* Trim whitespace from parameter names
+* Fix aggressive syntactic matching
+
 #### 3.7.0 - 2020-05-19
 * Account for parameters of type `jsonb` and provide proper type mismatch error.
 

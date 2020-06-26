@@ -492,4 +492,5 @@ module SyntacticAnalysis =
 
         operations
         |> Seq.map (applyLiterals moduleLiterals)
+        |> Seq.filter (fun operation -> not (List.isEmpty operation.blocks))
         |> Seq.toList

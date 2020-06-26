@@ -35,6 +35,14 @@ let tests =
                 Expect.equal 10 (List.length operationBlocks) "Found ten operation blocks"
         }
 
+        test "Syntactic analysis: no SQL blocks should be found using sprintf" {
+            match context (find "../examples/hashing/SprintfBlock.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.isEmpty operations "There should be no syntactic blocks"
+        }
+
         test "Syntactic Analysis: reading queries with [<Literal>] query" {
             match context (find "../examples/hashing/syntacticAnalysis-literalStrings.fs") with
             | None -> failwith "Could not crack project"

@@ -195,36 +195,14 @@ let clean _ =
     |> Seq.iter Shell.rm
 
 let dotnetRestore _ =
-    [sln]
-    |> Seq.map(fun dir -> fun () ->
-        let args =
-            [
-                sprintf "/p:PackageVersion=%s" releaseNotes.NugetVersion
-            ] |> String.concat " "
-        DotNet.restore(fun c ->
-            { c with
-                Common =
-                    c.Common
-                    |> DotNet.Options.withCustomParams
-                        (Some(args))
-            }) dir)
-    |> Seq.iter(retryIfInCI 10)
+    let restoreExitCode = Shell.Exec("dotnet", "restore", __SOURCE_DIRECTORY__)
+    if restoreExitCode <> 0
+    then failwith "Restore failed"
 
-
-let dotnetBuild ctx =
-    let args =
-        [
-            sprintf "/p:PackageVersion=%s" releaseNotes.NugetVersion
-            "--no-restore"
-        ]
-    DotNet.build(fun c ->
-        { c with
-            Configuration = configuration (ctx.Context.AllExecutingTargets)
-            Common =
-                c.Common
-                |> DotNet.Options.withAdditionalArgs args
-
-        }) sln
+let dotnetBuild _ =
+    let buildResult = Shell.Exec("dotnet", "build", __SOURCE_DIRECTORY__)
+    if buildResult <> 0
+    then failwith "dotnet build failed"
 
 let dotnetTest ctx =
     let testResult = Shell.Exec("dotnet", "run", "tests" </> "NpgsqlFSharpAnalyzer.Tests")
