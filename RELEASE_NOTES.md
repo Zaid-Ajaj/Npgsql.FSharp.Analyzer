@@ -1,3 +1,6 @@
+#### 3.9.0 - 2020-07-19
+* Updated FSharp.Analyzers.SDK to 0.5.0
+
 #### 3.8.0 - 2020-06-26
 * Trim whitespace from parameter names
 * Fix aggressive syntactic matching

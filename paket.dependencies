@@ -9,7 +9,7 @@ nuget Expecto 8.13.1
 nuget YoloDev.Expecto.TestSdk 0.8.0
 nuget Microsoft.NET.Test.Sdk 15.7.2
 nuget altcover ~> 6
-nuget FSharp.Analyzers.SDK 0.4.1
+nuget FSharp.Analyzers.SDK 0.5.0
 nuget Npgsql
 nuget ThrowawayDb.Postgres
 nuget Npgsql.FSharp

@@ -20,16 +20,16 @@
         "fake"
       ]
     },
-    "paket": {
-      "version": "5.241.2",
-      "commands": [
-        "paket"
-      ]
-    },
     "fcswatch-cli": {
       "version": "0.7.14",
       "commands": [
         "fcswatch"
+      ]
+    },
+    "paket": {
+      "version": "5.247.4",
+      "commands": [
+        "paket"
       ]
     }
   }
