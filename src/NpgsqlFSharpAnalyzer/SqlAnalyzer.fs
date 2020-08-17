@@ -33,7 +33,7 @@ module SqlAnalyzer =
         Content = ctx.Content
         FileName = ctx.FileName
         Symbols = ctx.Symbols
-        TypedTree = ctx.TypedTree
+        ParseTree = ctx.ParseTree
     }
 
     [<Analyzer "Npgsql.FSharp.Analyzer">]
