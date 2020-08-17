@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.Text.Tagging;
 using System;
 using System.Collections.Generic;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintTagger : ITagger<IErrorTag>, IDisposable
     {

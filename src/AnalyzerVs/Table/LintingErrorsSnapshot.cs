@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Documents;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintingErrorsSnapshot : WpfTableEntriesSnapshotBase
     {

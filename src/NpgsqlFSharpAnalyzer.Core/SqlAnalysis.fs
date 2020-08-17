@@ -1,5 +1,6 @@
 namespace Npgsql.FSharp.Analyzers.Core
 
+open System
 open FSharp.Compiler.Range
 open F23.StringSimilarity
 
@@ -205,7 +206,12 @@ module SqlAnalysis =
                         |> List.minBy (fun column -> levenshtein.Distance(attempt.columnName, column.Name))
                         |> fun column -> column.Name
 
-                    let warningMsg = sprintf "Attempting to read column named '%s' that was not returned by the result set. Did you mean to read '%s'?\nAvailable columns from the result set are:\n%s" attempt.columnName closestAlternative (formatColumns availableColumns)
+                    let warningMsg =
+                        if String.IsNullOrWhiteSpace attempt.columnName then
+                            sprintf "Attempting to read a column without specifying a name. Available columns returned from the result set are:\n%s" (formatColumns availableColumns)
+                        else
+                            sprintf "Attempting to read column named '%s' that was not returned by the result set. Did you mean to read '%s'?\nAvailable columns from the result set are:\n%s" attempt.columnName closestAlternative (formatColumns availableColumns)
+
                     let warning = createWarning warningMsg attempt.columnNameRange
                     let codeFixes =
                         availableColumns
@@ -281,8 +287,6 @@ module SqlAnalysis =
                         ("bit"|"bool"|"boolean") ->
                             if column.Nullable && notUsing "boolOrNone"
                             then yield typeMismatch [ replace "boolOrNone" ]
-                            // else if not column.Nullable && using "boolOrNone"
-                            // then yield typeMismatch [ replace "bool" ]
                             else if notUsing "boolOrNone" && notUsing "bool"
                             then
                                 if column.Nullable
@@ -293,14 +297,6 @@ module SqlAnalysis =
                         | ("int8" | "tinyint") ->
                             if column.Nullable && List.forall notUsing [ "int8OrNone"; "int16OrNone"; "intOrNone"; "int64OrNone" ]
                             then yield typeMismatch [ replace "int8OrNone"; replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
-                            // else if not column.Nullable && using "int8OrNone"
-                            // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int16OrNone"
-                            // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "intdOrNone"
-                            // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int64OrNone"
-                            // then yield typeMismatch [ replace "int8"; replace "int16"; replace "int"; replace "int64" ]
                             else if List.forall notUsing [ "int8OrNone"; "int16OrNone"; "intOrNone"; "int64OrNone"; "int8"; "int16"; "int"; "int64" ]
                             then
                                 if column.Nullable
@@ -310,25 +306,15 @@ module SqlAnalysis =
                         | ("int16"| "smallint") ->
                             if column.Nullable && List.forall notUsing [ "int16OrNone"; "intOrNone"; "int64OrNone" ]
                             then yield typeMismatch [ replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
-                            //else if not column.Nullable && using "int16OrNone"
-                            //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
-                            //else if not column.Nullable && using "intOrNone"
-                            //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
-                            //else if not column.Nullable && using "int64OrNone"
-                            //then yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
                             else if List.forall notUsing [ "int16OrNone"; "intOrNone"; "int64OrNone"; "int16"; "int"; "int64" ]
                             then
                                 if column.Nullable
                                 then yield typeMismatch [ replace "int16OrNone"; replace "intOrNone"; replace "int64OrNone" ]
                                 else yield typeMismatch [ replace "int16"; replace "int"; replace "int64" ]
 
-                        | ("int"|"integer"|"int32"|"serial"|"int4") ->
+                        | ("int"|"integer"|"int32"|"serial"|"int4"|"int2") ->
                             if column.Nullable && List.forall notUsing [ "intOrNone"; "int64OrNone" ]
                             then yield typeMismatch [ replace "intOrNone"; replace "int64OrNone" ]
-                            // else if not column.Nullable && using "intOrNone"
-                            // then yield typeMismatch [ replace "int"; replace "int64" ]
-                            // else if not column.Nullable && using "int64OrNone"
-                            // then yield typeMismatch [ replace "int"; replace "int64" ]
                             else if List.forall notUsing [ "intOrNone"; "int64OrNone"; "int"; "int64" ]
                             then
                                 if column.Nullable
@@ -338,8 +324,6 @@ module SqlAnalysis =
                         | ("int64"|"bigint"|"bigserial") ->
                             if column.Nullable && notUsing "int64OrNone"
                             then yield typeMismatch [ replace "int64OrNone" ]
-                            // else if not column.Nullable && using "int64OrNone"
-                            // then yield typeMismatch [ replace "int64" ]
                             else if notUsing "int64OrNone" && notUsing "int64"
                             then
                                 if column.Nullable
@@ -350,8 +334,6 @@ module SqlAnalysis =
                         | ("numeric"|"decimal"|"money") ->
                             if column.Nullable && notUsing "decimalOrNone"
                             then yield typeMismatch [ replace "decimalOrNone" ]
-                            // else if not column.Nullable && using "decimalOrNone"
-                            // then yield typeMismatch [ replace "decimal" ]
                             else if notUsing "decimalOrNone" && notUsing "decimal"
                             then
                                 if column.Nullable
@@ -362,8 +344,6 @@ module SqlAnalysis =
                         | "double precision" ->
                             if column.Nullable && notUsing "doubleOrNone"
                             then yield typeMismatch [ replace "doubleOrNone" ]
-                            // else if not column.Nullable && using "doubleOrNone"
-                            // then yield typeMismatch [ replace "double" ]
                             else if notUsing "doubleOrNone" && notUsing "double"
                             then
                                 if column.Nullable
@@ -371,11 +351,9 @@ module SqlAnalysis =
                                 else yield typeMismatch [ replace "double" ]
                             else ()
 
-                        | ("text"|"json"|"xml"|"jsonb") ->
+                        | ("text"|"json"|"xml"|"jsonb"|"varchar") ->
                             if column.Nullable && notUsing "textOrNone" && notUsing "stringOrNone"
                             then yield typeMismatch [ replace "textOrNone"; replace "stringOrNone" ]
-                            //else if not column.Nullable && (using "textOrNone" || using "stringOrNone")
-                            //then yield typeMismatch [ replace "text"; replace "string" ]
                             else if notUsing "textOrNone" && notUsing "text" && notUsing "string" && notUsing "stringOrNone"
                             then
                                 if column.Nullable
@@ -386,8 +364,6 @@ module SqlAnalysis =
                         | "date" ->
                             if column.Nullable && notUsing "dateOrNone"
                             then yield typeMismatch [ replace "dateOrNone" ]
-                            //else if not column.Nullable && using "dateOrNone"
-                            //then yield typeMismatch [ replace "date" ]
                             else if notUsing "dateOrNone" && notUsing "date"
                             then
                                 if column.Nullable
@@ -398,8 +374,6 @@ module SqlAnalysis =
                         | ("timestamp"|"timestamp without time zone") ->
                             if column.Nullable && notUsing "timestampOrNone" && notUsing "dateTimeOrNone"
                             then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestampOrNone" ]
-                            //else if not column.Nullable && (using "timestampOrNone" || using "dateTimeOrNone")
-                            //then yield typeMismatch [ replace "dateTime"; replace "timestamp" ]
                             else if notUsing "timestampOrNone" && notUsing "timestamp" && notUsing "dateTimeOrNone" && notUsing "dateTime"
                             then
                                 if column.Nullable

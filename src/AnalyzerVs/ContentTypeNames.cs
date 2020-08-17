@@ -1,4 +1,4 @@
-﻿namespace FSharpLintVs
+﻿namespace NpgsqlFSharpVs
 {
     public static class ContentTypeNames
     {

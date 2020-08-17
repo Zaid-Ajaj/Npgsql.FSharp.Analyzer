@@ -1,5 +1,5 @@
 ﻿using FSharp.Compiler.SourceCodeServices;
-using FSharpLintVs;
+using NpgsqlFSharpVs;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Shell.TableControl;
 using Microsoft.VisualStudio.Shell.TableManager;
@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     /// <summary>
     /// Factory for the <see cref="ITagger{T}"/> and <see cref="ITableDataSource"/>.

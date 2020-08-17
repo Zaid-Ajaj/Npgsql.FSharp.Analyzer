@@ -29,7 +29,7 @@ module SqlAnalyzer =
             Type = message.Type
         }
 
-    let specializedContext (ctx: Context) : Core.SpecializedContext = {
+    let sqlAnalyzerContext (ctx: Context) : Core.SqlAnalyzerContext = {
         Content = ctx.Content
         FileName = ctx.FileName
         Symbols = ctx.Symbols
@@ -39,7 +39,7 @@ module SqlAnalyzer =
     [<Analyzer "Npgsql.FSharp.Analyzer">]
     let queryAnalyzer : Analyzer =
         fun (ctx: Context) ->
-            let syntacticBlocks = Core.SyntacticAnalysis.findSqlOperations (specializedContext ctx)
+            let syntacticBlocks = Core.SyntacticAnalysis.findSqlOperations (sqlAnalyzerContext ctx)
             if List.isEmpty syntacticBlocks then
                 [ ]
             else

@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     /// <summary>
     /// Interaction logic for SuggestionPreview.xaml

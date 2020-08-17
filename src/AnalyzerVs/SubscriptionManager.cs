@@ -1,7 +1,7 @@
 ﻿using Microsoft.VisualStudio.Shell.TableManager;
 using System;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     /// <summary>
     /// Every consumer of data from an <see cref="ITableDataSource"/> provides an <see cref="ITableDataSink"/> to record the changes. We give the consumer

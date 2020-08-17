@@ -3,6 +3,7 @@ namespace Npgsql.FSharp.Analyzers.Core
 open System
 open System.IO
 open System.Linq
+open FSharp.Compiler.SourceCodeServices
 
 module SqlAnalyzer =
 
@@ -13,6 +14,15 @@ module SqlAnalyzer =
         if files.Any(fun file -> Path.GetFileName(file).ToLower() = fileToFind.ToLower())
         then path
         else findParent (DirectoryInfo(path).Parent.FullName) fileToFind
+
+    let getSymbols (checkResults: FSharpCheckFileResults) =
+        checkResults.PartialAssemblySignature.Entities
+        |> Seq.toList
+
+    let checkAnswerResult checkFileAnswer =
+        match checkFileAnswer with
+        | FSharpCheckFileAnswer.Aborted -> None
+        | FSharpCheckFileAnswer.Succeeded results -> Some results
 
     let tryFindConfig (file: string) =
         try

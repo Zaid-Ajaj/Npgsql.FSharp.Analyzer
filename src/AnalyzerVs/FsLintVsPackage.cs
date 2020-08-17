@@ -9,11 +9,11 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     // DO NOT REMOVE THIS MAGICAL INCANTATION NO MATTER HOW MUCH VS WARNS YOU OF DEPRECATION    
     // --------------------------------------------------------------------------------------
-    [InstalledProductRegistration("F# Lint", "", "0.1", IconResourceID = 400)]
+    [InstalledProductRegistration("F# Npgsql Analyzer", "Static SQL analyzer with Npgsql.FSharp", "0.1", IconResourceID = 400)]
     // --------------------------------------------------------------------------------------
 
     // Package registration attributes

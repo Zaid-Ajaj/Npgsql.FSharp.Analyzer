@@ -1,28 +1,20 @@
-﻿using Dotnet.ProjInfo.Workspace;
-using FSharp.Compiler;
-using FSharp.Compiler.SourceCodeServices;
+﻿using FSharp.Compiler;
 using FSharp.Compiler.Text;
 using Npgsql.FSharp.Analyzers.Core;
 using Microsoft.FSharp.Control;
 using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Language.StandardClassification;
 using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Classification;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Controls;
-using System.Windows.Threading;
 using Microsoft.FSharp.Core;
-using Microsoft.FSharp.Collections;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     ///<summary>
     /// Finds the linting errors in comments for a specific buffer.
@@ -171,11 +163,12 @@ namespace FSharpLintVs
         public async Task DoUpdateAsync()
         {
             if (IsDisposed)
+            {
                 return;
+            }
 
             var buffer = _currentSnapshot;
             var path = _document.FilePath;
-
 
             // replace with user token
             var token = _cts.Token;
@@ -210,27 +203,6 @@ namespace FSharpLintVs
                 return;
             }
 
-            var defaults = FSharpParsingOptions.Default;
-            var parseOpts = new FSharpParsingOptions(
-                sourceFiles: new string[] { path },
-                conditionalCompilationDefines: defaults.ConditionalCompilationDefines,
-                errorSeverityOptions: defaults.ErrorSeverityOptions,
-                isInteractive: defaults.IsInteractive,
-                lightSyntax: defaults.LightSyntax,
-                compilingFsLib: defaults.CompilingFsLib,
-                isExe: defaults.IsExe
-            );
-
-            var source = _currentSnapshot.GetText();
-            var sourceText = SourceText.ofString(source);
-            var parseAsync = _provider.CheckerInstance.ParseFile(path, sourceText, parseOpts, null);
-            var parseResults = await FSharpAsync.StartAsTask(parseAsync, null, token);
-            if (parseResults.ParseHadErrors)
-            {
-                return;
-            }
-
-
             var loadedSchema = SqlAnalysis.databaseSchema(connectionString);
 
             if (loadedSchema.IsError)
@@ -238,25 +210,66 @@ namespace FSharpLintVs
                 return;
             }
 
-            var context = new SpecializedContext(
+            var source = _currentSnapshot.GetText();
+            var sourceText = SourceText.ofString(source);
+
+            var getProjectOptions = _provider.CheckerInstance.GetProjectOptionsFromScript(
+                filename: path,
+                sourceText: sourceText,
+                assumeDotNetFramework: false,
+                useSdkRefs: true,
+                useFsiAuxLib: true,
+                previewEnabled: true,
+                otherFlags: new string[] { "--targetprofile:netstandard" },
+                loadedTimeStamp: FSharpOption<DateTime>.None,
+                extraProjectInfo: FSharpOption<object>.None,
+                optionsStamp: FSharpOption<long>.None,
+                userOpName: FSharpOption<string>.None
+            );
+
+            var (options, errors) = await FSharpAsync.StartAsTask(getProjectOptions, null, token);
+
+            if (errors.Any())
+            {
+                return;
+            }
+
+            var performParseAndCheck = _provider.CheckerInstance.ParseAndCheckFileInProject(
+                filename: path, 
+                fileversion: 1,
+                sourceText: sourceText,
+                options: options, 
+                textSnapshotInfo: FSharpOption<object>.None,
+                userOpName: FSharpOption<string>.None
+            );
+
+            var (parseResults, checkAnswer) = await FSharpAsync.StartAsTask(performParseAndCheck, null, token);
+
+            if (parseResults.ParseHadErrors || checkAnswer.IsAborted)
+            {
+                return;
+            }
+
+            var checkResults = SqlAnalyzer.checkAnswerResult(checkAnswer).Value;
+
+            var context = new SqlAnalyzerContext(
                 fileName: path,
                 content: source.Split('\n'),
                 parseTree: parseResults.ParseTree.Value,
-                symbols: FSharpList<FSharpEntity>.Empty
+                symbols: SqlAnalyzer.getSymbols(checkResults)
             );
 
-            var operations = SyntacticAnalysis.findSqlOperations(context).ToList();
             var databaseSchema = loadedSchema.ResultValue;
 
-            var foundErrors =
-               from operation in operations
-               from message in SqlAnalysis.analyzeOperation(operation, connectionString, databaseSchema)
-               select message;
+            var errorMessages =
+               from operation in SyntacticAnalysis.findSqlOperations(context)
+               from analysisOutput in SqlAnalysis.analyzeOperation(operation, connectionString, databaseSchema)
+               select analysisOutput;
 
             var oldLintingErrors = this.Factory.CurrentSnapshot;
             var newLintErrors = new LintingErrorsSnapshot(_document, oldLintingErrors.VersionNumber + 1);
 
-            foreach (var error in foundErrors)
+            foreach (var error in errorMessages)
             {
                 var span = RangeToSpan(error.Range, buffer);
                 newLintErrors.Errors.Add(new LintError(span, error, Project));

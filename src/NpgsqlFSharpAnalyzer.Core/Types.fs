@@ -7,7 +7,7 @@ open FSharp.Compiler
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.SourceCodeServices
 
-type SpecializedContext =
+type SqlAnalyzerContext =
     { FileName: string
       Content: string[]
       ParseTree: ParsedInput
@@ -31,6 +31,10 @@ type Message =
       Range: range
       Fixes: Fix list }
 
+    with
+        member self.IsWarning() = self.Severity = Warning
+        member self.IsInfo() = self.Severity = Info
+        member self.IsError() = self.Severity = Error
 
 type ColumnReadAttempt = {
     funcName: string;

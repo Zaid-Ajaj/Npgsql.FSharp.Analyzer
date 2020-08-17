@@ -3,7 +3,7 @@ using System.ComponentModel;
 using Microsoft.VisualStudio.Shell;
 using System.Runtime.InteropServices;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     [Guid(GuidString)]
     public class FsLintOptionsPage : DialogPage

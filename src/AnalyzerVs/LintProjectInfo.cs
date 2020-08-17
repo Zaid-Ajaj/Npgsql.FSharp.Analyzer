@@ -1,7 +1,7 @@
 ﻿using Microsoft.VisualStudio.Shell.Interop;
 using System;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintProjectInfo
     {

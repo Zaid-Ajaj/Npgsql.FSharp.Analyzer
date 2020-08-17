@@ -403,7 +403,7 @@ module SyntacticAnalysis =
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
             visitSyntacticExpression expr range
 
-    let findLiterals (ctx: SpecializedContext) =
+    let findLiterals (ctx: SqlAnalyzerContext) =
         let values = new ResizeArray<string * string>()
         for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
             match symbol.LiteralValue with
@@ -427,7 +427,7 @@ module SyntacticAnalysis =
 
         { operation with blocks = modifiedBlocks }
 
-    let findSqlOperations (ctx: SpecializedContext) =
+    let findSqlOperations (ctx: SqlAnalyzerContext) =
         let operations = ResizeArray<SqlOperation>()
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->

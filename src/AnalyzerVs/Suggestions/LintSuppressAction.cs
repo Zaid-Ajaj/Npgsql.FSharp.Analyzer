@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintSuppressAction : ISuggestedAction
     {

@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.Text;
 using Npgsql.FSharp.Analyzers.Core;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintFixAction : ISuggestedAction
     {

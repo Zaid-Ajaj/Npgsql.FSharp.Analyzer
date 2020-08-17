@@ -1,12 +1,9 @@
 ﻿using Npgsql.FSharp.Analyzers.Core;
-using Microsoft.FSharp.Core;
 using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Utilities;
 using System.Collections.Generic;
-using System.Text;
 using System.Linq;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintError
     {
@@ -16,7 +13,7 @@ namespace FSharpLintVs
 
         public int NextIndex = -1;
 
-        public string Tooltip => $"{LintWarning.Code}: {LintWarning.Message}";
+        public string Tooltip => LintWarning.Message;
 
         public string Identifier => LintWarning.Type;
 

@@ -4,7 +4,7 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 using System.ComponentModel.Composition;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     [Export(typeof(ISuggestedActionsSourceProvider))]
     [ContentType(ContentTypeNames.FSharpContentType)]

@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.Shell.TableManager;
 
-namespace FSharpLintVs
+namespace NpgsqlFSharpVs
 {
     public class LintTableSnapshotFactory : TableEntriesSnapshotFactoryBase
     {

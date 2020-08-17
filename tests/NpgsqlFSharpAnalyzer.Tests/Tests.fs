@@ -6,7 +6,6 @@ open Npgsql.FSharp.Analyzers
 open Npgsql.FSharp.Analyzers.Core
 open Npgsql.FSharp
 open ThrowawayDb.Postgres
-open FSharp.Analyzers.SDK
 
 let analyzers = [
     SqlAnalyzer.queryAnalyzer
@@ -111,7 +110,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Core.Severity.Warning message.Severity "The message is an warning"
+                        Expect.isTrue (message.IsWarning()) "The message is an warning"
                         Expect.stringContains message.Message "Sql.int64" "Message should contain the missing column name"
                     | _ ->
                         failwith "Expected only one error message"
@@ -244,7 +243,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Core.Severity.Warning message.Severity "The message is an warning"
+                        Expect.isTrue (message.IsWarning()) "The message is an warning"
                         Expect.stringContains message.Message "non_existent" "Message should contain the missing column name"
                     | _ ->
                         failwith "Expected only one error message"
@@ -269,7 +268,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Core.Severity.Warning message.Severity "The message is a warning"
+                        Expect.isTrue (message.IsWarning()) "The message is a warning"
                         Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
                     | _ ->
                         failwith "Expected only one error message"
