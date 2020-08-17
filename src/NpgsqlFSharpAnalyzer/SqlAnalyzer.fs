@@ -7,52 +7,60 @@ open System.Linq
 
 module SqlAnalyzer =
 
-    /// Recursively tries to find the parent of a file starting from a directory
-    let rec findParent (directory: string) (fileToFind: string) = 
-        let path = if Directory.Exists(directory) then directory else Directory.GetParent(directory).FullName
-        let files = Directory.GetFiles(path)
-        if files.Any(fun file -> Path.GetFileName(file).ToLower() = fileToFind.ToLower()) 
-        then path 
-        else findParent (DirectoryInfo(path).Parent.FullName) fileToFind
+    let specializedSeverity = function
+    | Core.Severity.Error -> Severity.Error
+    | Core.Severity.Info -> Severity.Info
+    | Core.Severity.Warning -> Severity.Warning
 
-    let tryFindConfig (file: string) =
-        try
-            let parent = (Directory.GetParent file).FullName
-            try Some (Path.Combine(findParent parent "NPGSQL_FSHARP", "NPGSQL_FSHARP"))
-            with error -> None 
-        with error ->
-            None
+    let specializedFix (fix: Core.Fix) : Fix =
+        {
+            FromRange = fix.FromRange
+            FromText = fix.FromText
+            ToText = fix.ToText
+        }
 
-    let tryFindConnectionString (ctx: Context) =
-        match tryFindConfig ctx.FileName with
-        | Some config ->
-            try (File.ReadAllText config)
-            with error -> Environment.GetEnvironmentVariable "NPGSQL_FSHARP"
-        | None ->
-            Environment.GetEnvironmentVariable "NPGSQL_FSHARP"
+    let specializedMessage (message: Core.Message) : Message =
+        {
+            Code = message.Code
+            Fixes = message.Fixes |> List.map specializedFix
+            Message = message.Message
+            Range = message.Range
+            Severity = message.Severity |> specializedSeverity
+            Type = message.Type
+        }
+
+    let sqlAnalyzerContext (ctx: Context) : Core.SqlAnalyzerContext = {
+        Content = ctx.Content
+        FileName = ctx.FileName
+        Symbols = ctx.Symbols
+        ParseTree = ctx.ParseTree
+    }
 
     [<Analyzer "Npgsql.FSharp.Analyzer">]
     let queryAnalyzer : Analyzer =
         fun (ctx: Context) ->
-            let syntacticBlocks = SyntacticAnalysis.findSqlOperations ctx
+            let syntacticBlocks = Core.SyntacticAnalysis.findSqlOperations (sqlAnalyzerContext ctx)
             if List.isEmpty syntacticBlocks then
                 [ ]
-            else 
-                let connectionString = tryFindConnectionString ctx
+            else
+                let connectionString = Core.SqlAnalyzer.tryFindConnectionString ctx.FileName
                 if isNull connectionString || String.IsNullOrWhiteSpace connectionString then
                     [
                         for block in syntacticBlocks ->
-                            SqlAnalysis.createWarning "Missing environment variable 'NPGSQL_FSHARP'. Please set that variable to the connection string of your development database put the connection string in a file called 'NPGSQL_FSHARP' relative next your project or in your project root." block.range
+                            Core.SqlAnalysis.createWarning "Missing environment variable 'NPGSQL_FSHARP'. Please set that variable to the connection string of your development database put the connection string in a file called 'NPGSQL_FSHARP' relative next your project or in your project root." block.range
+                            |> specializedMessage
                     ]
                 else
-                    match SqlAnalysis.databaseSchema connectionString with
+                    match Core.SqlAnalysis.databaseSchema connectionString with
                     | Result.Error connectionError ->
                         [
                             for block in syntacticBlocks ->
-                                SqlAnalysis.createWarning (sprintf "Error while connecting to the development database using the connection string from environment variable 'NPGSQL_FSHARP' or put the connection string in a file called 'NPGSQL_FSHARP' relative next your project or in your project root. Connection error: %s" connectionError) block.range
+                                Core.SqlAnalysis.createWarning (sprintf "Error while connecting to the development database using the connection string from environment variable 'NPGSQL_FSHARP' or put the connection string in a file called 'NPGSQL_FSHARP' relative next your project or in your project root. Connection error: %s" connectionError) block.range
+                                |> specializedMessage
                         ]
 
                     | Result.Ok schema ->
                         syntacticBlocks
-                        |> List.collect (fun block -> SqlAnalysis.analyzeOperation block connectionString schema)
+                        |> List.collect (fun block -> Core.SqlAnalysis.analyzeOperation block connectionString schema)
+                        |> List.map specializedMessage
                         |> List.distinctBy (fun message -> message.Range)

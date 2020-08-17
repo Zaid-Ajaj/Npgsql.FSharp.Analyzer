@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Analyzer.fs" />
-    <Compile Include="Tests.fs" />
-    <Compile Include="Main.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer\NpgsqlFSharpAnalyzer.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Expecto" Version="8.13.1" />
-    <PackageReference Include="FSharp.Core" Version="4.7.0" />
-    <PackageReference Include="Npgsql.FSharp" Version="3.0.0" />
-    <PackageReference Include="ThrowawayDb.Postgres" Version="1.0.0" />
-  </ItemGroup>
-  <Import Project="..\..\.paket\Paket.Restore.targets" />
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp2.0</TargetFramework>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="AssemblyInfo.fs" />
+        <Compile Include="Analyzer.fs" />
+        <Compile Include="Tests.fs" />
+        <Compile Include="Main.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer\NpgsqlFSharpAnalyzer.fsproj" />
+        <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer.Core\NpgsqlFSharpAnalyzer.Core.fsproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Expecto" Version="8.13.1" />
+        <PackageReference Include="FSharp.Core" Version="4.7.2" />
+        <PackageReference Include="Npgsql.FSharp" Version="3.6.0" />
+        <PackageReference Include="ThrowawayDb.Postgres" Version="1.0.0" />
+        <PackageReference Update="FSharp.Core" Version="4.7.2" />
+    </ItemGroup>
 </Project>

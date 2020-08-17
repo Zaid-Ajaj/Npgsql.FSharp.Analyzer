@@ -1,0 +1,20 @@
+﻿<h1>Getting Started</h1>
+
+<h3>
+    Configure the connection string to your development database
+</h3>
+
+<p>
+    The analyzer requires a connection string that points to the database you are developing against. You can configure this connection string by either creating a file called <code>NPGSQL_FSHARP</code> (without extension) somewhere next to your F# project or preferably in the root of your workspace. This file should contain that connection string and nothing else. An example of the contents of such file:
+</p>
+<pre>
+Host=localhost; Username=postgres; Password=postgres; Database=databaseName
+</pre>
+<p>
+    Remember to add an entry in your .gitingore file to make sure you don't commit the connection string to your source version control system
+</p>
+<p>
+    Another way to configure the connection string is by setting the value of an environment variable named NPGSQL_FSHARP that contains the connection string.
+
+    The analyzer will try to locate and read the file first, then falls back to using the environment variable.
+</p>
