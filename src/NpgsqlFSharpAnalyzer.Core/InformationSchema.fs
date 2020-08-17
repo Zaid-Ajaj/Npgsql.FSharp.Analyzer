@@ -1,4 +1,4 @@
-namespace Npgsql.FSharp.Analyzers
+namespace Npgsql.FSharp.Analyzers.Core
 
 open System
 open System.Data
@@ -17,12 +17,12 @@ open System.Net
 module InformationSchema =
     type internal NpgsqlDataReader with
 
-        member cursor.GetValueOrDefault(name: string, defaultValue) =    
+        member cursor.GetValueOrDefault(name: string, defaultValue) =
             let i = cursor.GetOrdinal(name)
             if cursor.IsDBNull( i) then defaultValue else cursor.GetFieldValue( i)
 
     type internal Type with
-        member this.PartiallyQualifiedName = 
+        member this.PartiallyQualifiedName =
             sprintf "%s, %s" this.FullName (this.Assembly.GetName().Name)
 
     //https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
@@ -67,7 +67,7 @@ module InformationSchema =
 
         "date", typeof<DateTime>
         "interval", typeof<TimeSpan>
-        "timestamp without time zone", typeof<DateTime>; "timestamp", typeof<DateTime>   
+        "timestamp without time zone", typeof<DateTime>; "timestamp", typeof<DateTime>
         "timestamp with time zone", typeof<DateTime>; "timestamptz", typeof<DateTime>
         "time without time zone", typeof<TimeSpan>; "time", typeof<TimeSpan>
         "time with time zone", typeof<DateTimeOffset>; "timetz", typeof<DateTimeOffset>
@@ -82,43 +82,43 @@ module InformationSchema =
         //"range", typeof<NpgsqlRange>, NpgsqlDbType.Range)
     ]
 
-    let getTypeMapping = 
+    let getTypeMapping =
         let allMappings = dict builtins
-        fun datatype -> 
+        fun datatype ->
             let exists, value = allMappings.TryGetValue(datatype)
-            if exists then value else failwithf "Unsupported datatype %s." datatype 
+            if exists then value else failwithf "Unsupported datatype %s." datatype
 
-    type PostgresType with    
-        member this.ToClrType() = 
+    type PostgresType with
+        member this.ToClrType() =
             match this with
-            | :? PostgresBaseType as x -> 
+            | :? PostgresBaseType as x ->
                 getTypeMapping x.Name
             | :? PostgresEnumType ->
                 typeof<string>
-            | :? PostgresDomainType as x -> 
+            | :? PostgresDomainType as x ->
                 x.BaseType.ToClrType()
             | :? PostgresTypes.PostgresArrayType as arr ->
                 arr.Element.ToClrType().MakeArrayType()
-            | _ -> 
+            | _ ->
                 typeof<obj>
-        
+
     type DataType = {
         Name: string
         Schema: string
         ClrType: Type
-    }   with    
+    }   with
         member this.FullName = sprintf "%s.%s" this.Schema this.Name
         member this.IsUserDefinedType = this.Schema <> "pg_catalog"
         member this.IsFixedLength = this.ClrType.IsValueType
-        member this.UdtTypeName = 
-            if this.ClrType.IsArray 
+        member this.UdtTypeName =
+            if this.ClrType.IsArray
             then
                 let withoutTrailingBrackets = this.Name.Substring(0, this.Name.Length - 2) // my_enum[] -> my_enum
                 sprintf "%s.%s" this.Schema withoutTrailingBrackets
             else this.FullName
 
-        static member Create(x: PostgresTypes.PostgresType) = 
-            { 
+        static member Create(x: PostgresTypes.PostgresType) =
+            {
                 Name = x.Name
                 Schema = x.Namespace
                 ClrType = x.ToClrType()
@@ -127,12 +127,12 @@ module InformationSchema =
     type Schema =
         { OID : string
           Name : string }
-    
+
     type Table =
         { OID : string
           Name : string
           Description : string option }
-    
+
     type Column =
         { ColumnAttributeNumber : int16
           Name: string
@@ -151,7 +151,7 @@ module InformationSchema =
 
         member this.ClrType = this.DataType.ClrType
 
-        member this.ClrTypeConsideringNullability = 
+        member this.ClrTypeConsideringNullability =
             if this.Nullable
             then typedefof<_ option>.MakeGenericType this.DataType.ClrType
             else this.DataType.ClrType
@@ -167,46 +167,46 @@ module InformationSchema =
         { Schema : Schema
           Tables : Dictionary<Table, HashSet<Column>>
           Enums : Map<string, DbEnum> }
-    
+
     type ColumnLookupKey = { TableOID : string; ColumnAttributeNumber : int16 }
-    
+
     type DbSchemaLookups =
         { Schemas : Dictionary<string, DbSchemaLookupItem>
           Columns : Dictionary<ColumnLookupKey, Column>
           Enums : Map<string, DbEnum> }
-    
+
     type Parameter =
         { Name: string
           NpgsqlDbType: NpgsqlTypes.NpgsqlDbType
-          Direction: ParameterDirection 
+          Direction: ParameterDirection
           MaxLength: int
           Precision: byte
           Scale : byte
           Optional: bool
           DataType: DataType }
         with
-   
+
         member this.Size = this.MaxLength
 
-    let inline openConnection connectionString =  
+    let inline openConnection connectionString =
         let conn = new NpgsqlConnection(connectionString)
         conn.Open()
         conn
 
     let extractParametersAndOutputColumns(connectionString, commandText, allParametersOptional, dbSchemaLookups : DbSchemaLookups) =
         use conn = openConnection(connectionString)
-    
+
         use cmd = new NpgsqlCommand(commandText, conn)
         NpgsqlCommandBuilder.DeriveParameters(cmd)
         for p in cmd.Parameters do p.Value <- DBNull.Value
-        let cols = 
+        let cols =
             use cursor = cmd.ExecuteReader(CommandBehavior.SchemaOnly)
             if cursor.FieldCount = 0 then [] else [ for c in cursor.GetColumnSchema() -> c ]
-    
+
         let outputColumns =
             [ for column in cols ->
                 let columnAttributeNumber = column.ColumnAttributeNumber.GetValueOrDefault(-1s)
-            
+
                 if column.TableOID <> 0u then
                     let lookupKey = { TableOID = string column.TableOID
                                       ColumnAttributeNumber = columnAttributeNumber }
@@ -231,13 +231,13 @@ module InformationSchema =
                     }  ]
 
 
-        let parameters = 
+        let parameters =
             [ for p in cmd.Parameters ->
                 assert (p.Direction = ParameterDirection.Input)
                 { Name = p.ParameterName
-                  NpgsqlDbType = 
+                  NpgsqlDbType =
                     match p.PostgresType with
-                    | :? PostgresArrayType as x when (x.Element :? PostgresEnumType) -> 
+                    | :? PostgresArrayType as x when (x.Element :? PostgresEnumType) ->
                         //probably array of custom type (enum or composite)
                         NpgsqlDbType.Array ||| NpgsqlDbType.Text
                     | _ -> p.NpgsqlDbType
@@ -245,20 +245,20 @@ module InformationSchema =
                   MaxLength = p.Size
                   Precision = p.Precision
                   Scale = p.Scale
-                  Optional = allParametersOptional 
+                  Optional = allParametersOptional
                   DataType = DataType.Create(p.PostgresType) } ]
-    
-        let enums =  
-            outputColumns 
+
+        let enums =
+            outputColumns
             |> Seq.choose (fun c ->
                 if c.DataType.IsUserDefinedType && dbSchemaLookups.Enums.ContainsKey(c.DataType.UdtTypeName) then
                     Some (c.DataType.UdtTypeName, dbSchemaLookups.Enums.[c.DataType.UdtTypeName])
                 else
                     None)
-            |> Seq.append [ 
+            |> Seq.append [
                 for p in parameters do
                     if p.DataType.IsUserDefinedType && dbSchemaLookups.Enums.ContainsKey(p.DataType.UdtTypeName)
-                    then 
+                    then
                         yield p.DataType.UdtTypeName, dbSchemaLookups.Enums.[p.DataType.UdtTypeName]
             ]
             |> Seq.distinct
@@ -268,7 +268,7 @@ module InformationSchema =
 
     let getDbSchemaLookups(connectionString) =
         use conn = openConnection(connectionString)
-    
+
         use cmd = conn.CreateCommand()
         cmd.CommandText <- """
             SELECT
@@ -281,7 +281,7 @@ module InformationSchema =
             GROUP BY
               schema, name
         """
-    
+
         let enumsLookup =
             [
                 use cursor = cmd.ExecuteReader()
@@ -297,7 +297,7 @@ module InformationSchema =
                 schema, types |> Seq.map (fun (_, name, t) -> name, t) |> Map.ofSeq
             )
             |> Map.ofSeq
-    
+
         //https://stackoverflow.com/questions/12445608/psql-list-all-tables#12455382
         use cmd = conn.CreateCommand()
         cmd.CommandText <- """
@@ -339,22 +339,22 @@ module InformationSchema =
                ns.nspname <> 'information_schema'
             ORDER BY nspname, relname;
         """
-    
+
         let schemas = Dictionary<string, DbSchemaLookupItem>()
         let columns = Dictionary<ColumnLookupKey, Column>()
-    
+
         use row = cmd.ExecuteReader()
         while row.Read() do
             let schema : Schema =
                 { OID = string row.["schema_oid"]
                   Name = string row.["schema_name"] }
-        
+
             if not <| schemas.ContainsKey(schema.Name) then
-            
+
                 schemas.Add(schema.Name, { Schema = schema
                                            Tables = Dictionary();
                                            Enums = enumsLookup.TryFind schema.Name |> Option.defaultValue Map.empty })
-        
+
             match row.["table_oid"] |> Option.ofObj with
             | None -> ()
             | Some oid ->
@@ -362,10 +362,10 @@ module InformationSchema =
                     { OID = string oid
                       Name = string row.["table_name"]
                       Description = row.["table_description"] |> Option.ofObj |> Option.map string }
-            
+
                 if not <| schemas.[schema.Name].Tables.ContainsKey(table) then
                     schemas.[schema.Name].Tables.Add(table, HashSet())
-            
+
                 match row.GetValueOrDefault("col_number", -1s) with
                 | -1s -> ()
                 | attnum ->
@@ -374,17 +374,17 @@ module InformationSchema =
                         schemas.[schema.Name].Enums
                         |> Map.tryFind udtName
                         |> Option.isSome
-                
+
                     let clrType =
                         match string row.["col_data_type"] with
                         | "ARRAY" ->
-                            let elemType = getTypeMapping(udtName.TrimStart('_') ) 
+                            let elemType = getTypeMapping(udtName.TrimStart('_') )
                             elemType.MakeArrayType()
                         | "USER-DEFINED" ->
                             if isUdt then typeof<string> else typeof<obj>
-                        | dataType -> 
+                        | dataType ->
                             getTypeMapping(dataType)
-                
+
                     let column =
                         { ColumnAttributeNumber = attnum
                           Name = string row.["col_name"]
@@ -401,10 +401,10 @@ module InformationSchema =
                           PartOfPrimaryKey = unbox row.["col_part_of_primary_key"]
                           BaseSchemaName = schema.Name
                           BaseTableName = string row.["table_name"] }
-                 
+
                     if not <| schemas.[schema.Name].Tables.[table].Contains(column) then
                         schemas.[schema.Name].Tables.[table].Add(column) |> ignore
-                
+
                     let lookupKey = { TableOID = table.OID
                                       ColumnAttributeNumber = column.ColumnAttributeNumber }
                     if not <| columns.ContainsKey(lookupKey) then

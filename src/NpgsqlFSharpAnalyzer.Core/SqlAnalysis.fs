@@ -1,6 +1,5 @@
-namespace Npgsql.FSharp.Analyzers
+namespace Npgsql.FSharp.Analyzers.Core
 
-open FSharp.Analyzers.SDK
 open FSharp.Compiler.Range
 open F23.StringSimilarity
 
@@ -180,7 +179,7 @@ module SqlAnalysis =
                                     then yield typeMismatch [ "Sql.jsonb"; "Sql.jsonbOrNone"; "Sql.dbnull" ]
 
                                 | ("text"|"json"|"xml") ->
-                                    if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.dbnull" 
+                                    if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.dbnull"
                                     then yield typeMismatch [ "Sql.text"; "Sql.string"; "Sql.textOrNone"; "Sql.stringOrNone"; "Sql.dbnull" ]
                                 | _ ->
                                     ()
@@ -383,7 +382,7 @@ module SqlAnalysis =
                                 then yield typeMismatch [ replace "textOrNone"; replace "stringOrText" ]
                                 else yield typeMismatch [ replace "text"; replace "string" ]
                             else ()
-                             
+
                         | "date" ->
                             if column.Nullable && notUsing "dateOrNone"
                             then yield typeMismatch [ replace "dateOrNone" ]

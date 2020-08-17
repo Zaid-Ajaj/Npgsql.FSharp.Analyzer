@@ -1,0 +1,44 @@
+﻿<UserControl x:Class="FSharpLintVs.SuggestionPreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:vsshell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
+             xmlns:local="clr-namespace:FSharpLintVs"
+             mc:Ignorable="d" 
+             d:DesignHeight="200" d:DesignWidth="400"             
+             >
+    <StackPanel>
+        <TextBlock TextWrapping="Wrap" Padding="6,4">
+            <Hyperlink NavigateUri="{Binding HelpUrl, Mode=OneWay}" TextDecorations="{x:Null}">
+                <Run Text="{Binding Identifier, Mode=OneWay}"></Run>
+            </Hyperlink>            
+            <Run Text="{Binding Message, Mode=OneWay}"></Run>
+        </TextBlock>
+        <Separator Padding="1" />
+        <Border 
+            Background="{DynamicResource {x:Static vsshell:VsBrushes.BrandedUIBackgroundKey}}" 
+            BorderBrush="{DynamicResource {x:Static vsshell:VsBrushes.BrandedUIBorderKey}}" 
+            Padding="8"
+        >
+            <StackPanel>
+                <TextBlock Opacity="0.3" Padding="0,4">. . .</TextBlock>
+                <TextBlock FontFamily="Consolas" Padding="3">
+                    <Run>-</Run>
+                    <Run Text="{Binding ErrorText, Mode=OneWay}" ></Run>
+                    <TextBlock.Background>
+                        <SolidColorBrush Color="{DynamicResource {x:Static vsshell:VsColors.VizSurfaceRedLightKey}}" Opacity="0.5" />
+                    </TextBlock.Background>
+                </TextBlock>
+                <TextBlock Padding="3" FontFamily="Consolas">
+                    <Run>+</Run>
+                    <Run Text="{Binding ReplacementText, Mode=OneWay}"></Run>
+                    <TextBlock.Background>
+                        <SolidColorBrush Color="{DynamicResource {x:Static vsshell:VsColors.VizSurfaceGreenLightKey}}" Opacity="0.5" />
+                    </TextBlock.Background>
+                </TextBlock>
+                <TextBlock Opacity="0.3" Padding="0,4">. . .</TextBlock>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

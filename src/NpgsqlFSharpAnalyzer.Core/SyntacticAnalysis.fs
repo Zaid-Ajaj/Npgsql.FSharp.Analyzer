@@ -1,6 +1,5 @@
-namespace Npgsql.FSharp.Analyzers
+namespace Npgsql.FSharp.Analyzers.Core
 
-open FSharp.Analyzers.SDK
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.Range
@@ -404,7 +403,7 @@ module SyntacticAnalysis =
         | SynBinding.Binding (access, kind, mustInline, isMutable, attrs, xmlDecl, valData, headPat, returnInfo, expr, range, seqPoint) ->
             visitSyntacticExpression expr range
 
-    let findLiterals (ctx: Context) =
+    let findLiterals (ctx: SpecializedContext) =
         let values = new ResizeArray<string * string>()
         for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
             match symbol.LiteralValue with
@@ -428,7 +427,7 @@ module SyntacticAnalysis =
 
         { operation with blocks = modifiedBlocks }
 
-    let findSqlOperations (ctx: Context) =
+    let findSqlOperations (ctx: SpecializedContext) =
         let operations = ResizeArray<SqlOperation>()
         match ctx.ParseTree with
         | ParsedInput.ImplFile input ->
@@ -478,7 +477,7 @@ module SyntacticAnalysis =
                                 | SynModuleDecl.NestedModule(moduleInfo, isRecursive, nestedDeclarations, _, _) ->
                                     iterDeclarations nestedDeclarations
 
-                                | SynModuleDecl.Types(definitions, range)  -> 
+                                | SynModuleDecl.Types(definitions, range)  ->
                                     iterTypeDefs definitions
                                 | _ ->
                                     ()

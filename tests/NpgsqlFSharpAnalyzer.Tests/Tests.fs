@@ -3,6 +3,7 @@ module Tests
 open System
 open Expecto
 open Npgsql.FSharp.Analyzers
+open Npgsql.FSharp.Analyzers.Core
 open Npgsql.FSharp
 open ThrowawayDb.Postgres
 open FSharp.Analyzers.SDK
@@ -14,7 +15,9 @@ let analyzers = [
 let inline find file = IO.Path.Combine(__SOURCE_DIRECTORY__ , file)
 let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/examples.fsproj")
 
-let inline context file = AnalyzerBootstrap.context file
+let inline context file =
+    AnalyzerBootstrap.context file
+    |> Option.map SqlAnalyzer.specializedContext
 
 let createTestDatabase() =
     Sql.host "localhost"
@@ -108,7 +111,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Severity.Warning message.Severity "The message is an warning"
+                        Expect.equal Core.Severity.Warning message.Severity "The message is an warning"
                         Expect.stringContains message.Message "Sql.int64" "Message should contain the missing column name"
                     | _ ->
                         failwith "Expected only one error message"
@@ -241,7 +244,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Severity.Warning message.Severity "The message is an warning"
+                        Expect.equal Core.Severity.Warning message.Severity "The message is an warning"
                         Expect.stringContains message.Message "non_existent" "Message should contain the missing column name"
                     | _ ->
                         failwith "Expected only one error message"
@@ -266,7 +269,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.equal Severity.Warning message.Severity "The message is a warning"
+                        Expect.equal Core.Severity.Warning message.Severity "The message is a warning"
                         Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
                     | _ ->
                         failwith "Expected only one error message"
