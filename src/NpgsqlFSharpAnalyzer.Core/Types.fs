@@ -11,9 +11,7 @@ type SpecializedContext =
     { FileName: string
       Content: string[]
       ParseTree: ParsedInput
-      TypedTree: FSharpImplementationFileContents
-      Symbols: FSharpEntity list
-      GetAllEntities: bool -> AssemblySymbol list}
+      Symbols: FSharpEntity list }
 
 type Fix =
     { FromRange : range

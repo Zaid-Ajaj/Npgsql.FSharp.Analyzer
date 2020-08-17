@@ -32,8 +32,6 @@ module SqlAnalyzer =
     let specializedContext (ctx: Context) : Core.SpecializedContext = {
         Content = ctx.Content
         FileName = ctx.FileName
-        GetAllEntities = ctx.GetAllEntities
-        ParseTree = ctx.ParseTree
         Symbols = ctx.Symbols
         TypedTree = ctx.TypedTree
     }

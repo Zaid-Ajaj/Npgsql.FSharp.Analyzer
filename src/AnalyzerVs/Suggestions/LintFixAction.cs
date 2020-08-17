@@ -16,10 +16,10 @@ namespace FSharpLintVs
         private readonly LintError _lintError;
         private readonly Fix _fix;
 
-        public LintFixAction(LintError lintError)
+        public LintFixAction(LintError lintError, Fix fix)
         {
             this._lintError = lintError;
-            this._fix = _lintError.GetSuggestedFix();
+            this._fix = fix;
         }
 
         public string DisplayText => $"Replace with '{_fix.ToText}'";
@@ -36,7 +36,7 @@ namespace FSharpLintVs
         public Task<IEnumerable<SuggestedActionSet>> GetActionSetsAsync(CancellationToken cancellationToken) => default;
 #pragma warning restore RCS1210 
 
-        public bool HasPreview => true;
+        public bool HasPreview => false;
 
         public Task<object> GetPreviewAsync(CancellationToken cancellationToken)
         {

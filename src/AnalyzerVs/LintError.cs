@@ -28,7 +28,9 @@ namespace FSharpLintVs
 
         public bool HasSuggestedFix => LintWarning.Fixes.Any();
 
-        public Fix GetSuggestedFix() => LintWarning.Fixes.First();
+        public Fix GetSuggestedFix() => LintWarning.Fixes.FirstOrDefault();
+
+        public IEnumerable<Fix> Fixes => LintWarning.Fixes;
 
         public int Line => LintWarning.Range.StartLine - 1;
 

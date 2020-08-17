@@ -61,10 +61,10 @@ namespace FSharpLintVs
             {
                 if (range.IntersectsWith(error.Span))
                 {
-                    if (error.HasSuggestedFix)
-                        yield return new LintFixAction(error);
-
-                    yield return new LintSuppressAction(error);
+                    foreach(var fix in error.Fixes)
+                    {
+                        yield return new LintFixAction(error, fix);
+                    }
                 }
             }
         }

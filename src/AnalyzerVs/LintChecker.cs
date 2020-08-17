@@ -203,6 +203,13 @@ namespace FSharpLintVs
 
             await Task.Yield();
 
+            var connectionString = SqlAnalyzer.tryFindConnectionString(path);
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                return;
+            }
+
             var defaults = FSharpParsingOptions.Default;
             var parseOpts = new FSharpParsingOptions(
                 sourceFiles: new string[] { path },
@@ -223,12 +230,6 @@ namespace FSharpLintVs
                 return;
             }
 
-            var connectionString = SqlAnalyzer.tryFindConnectionString(path);
-
-            if (String.IsNullOrWhiteSpace(connectionString))
-            {
-                return;
-            }
 
             var loadedSchema = SqlAnalysis.databaseSchema(connectionString);
 
@@ -241,11 +242,7 @@ namespace FSharpLintVs
                 fileName: path,
                 content: source.Split('\n'),
                 parseTree: parseResults.ParseTree.Value,
-                typedTree: null,
-                symbols: FSharpList<FSharpEntity>.Empty,
-                getAllEntities: FSharpFunc<bool, FSharpList<AssemblySymbol>>.FromConverter(
-                    new Converter<bool, FSharpList<AssemblySymbol>>(value => FSharpList<AssemblySymbol>.Empty)
-                )
+                symbols: FSharpList<FSharpEntity>.Empty
             );
 
             var operations = SyntacticAnalysis.findSqlOperations(context).ToList();
