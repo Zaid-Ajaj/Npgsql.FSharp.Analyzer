@@ -1,15 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="FSharpLintVs.ef00bfc3-a899-45fc-aae8-afecf8673aaf" Version="0.1" Language="en-US" Publisher="Asti" />
-        <DisplayName>F# Lint</DisplayName>
-        <Description xml:space="preserve">F# source code linting using FSharpLint. </Description>
-        <MoreInfo>https://github.com/deviousasti/fsharp-linting-for-vs</MoreInfo>
+        <Identity Id="FSharpLintVs.ef00bfc3-a899-45fc-aae8-afecf8673aaf" Version="1.0" Language="en-US" Publisher="Zaid Ajaj" />
+        <DisplayName>NpgsqlAnalyzerVs</DisplayName>
+        <Description xml:space="preserve">F# analyzer that provides embedded SQL syntax analysis, type-checking for parameters and result sets and nullable column detection when writing queries using Npgsql.FSharp.</Description>
+        <MoreInfo>https://github.com/Zaid-Ajaj/Npgsql.FSharp.Analyzer</MoreInfo>
         <License>Resources\License.txt</License>
+        <GettingStartedGuide>Resources\GettingStarted.html</GettingStartedGuide>
         <ReleaseNotes>Resources\ReleaseNotes.html</ReleaseNotes>
         <Icon>Resources\logo.png</Icon>
         <PreviewImage>Resources\logo.png</PreviewImage>
-        <Tags>fsharp, linting</Tags>
+        <Tags>fsharp, linting, sql, static-analysis</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[16.0, 17.0)" />

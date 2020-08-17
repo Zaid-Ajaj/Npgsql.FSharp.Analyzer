@@ -16,7 +16,7 @@ let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/example
 
 let inline context file =
     AnalyzerBootstrap.context file
-    |> Option.map SqlAnalyzer.specializedContext
+    |> Option.map SqlAnalyzer.sqlAnalyzerContext
 
 let createTestDatabase() =
     Sql.host "localhost"

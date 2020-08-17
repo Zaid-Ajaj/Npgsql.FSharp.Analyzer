@@ -16,8 +16,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <LangVersion>8.0</LangVersion>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <RootNamespace>FSharpLintVs</RootNamespace>
-    <AssemblyName>FSharpLintVs</AssemblyName>
+    <RootNamespace>NpgsqlFSharpVs</RootNamespace>
+    <AssemblyName>NpgsqlFSharpVs</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <UseCodebase>true</UseCodebase>
@@ -72,6 +72,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Resources\GettingStarted.html">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\License.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
