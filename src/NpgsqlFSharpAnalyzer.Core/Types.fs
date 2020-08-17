@@ -2,8 +2,6 @@ namespace Npgsql.FSharp.Analyzers.Core
 
 open FSharp.Compiler.Range
 
-open System
-open FSharp.Compiler
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.SourceCodeServices
 

@@ -1,5 +1,4 @@
 #load ".fake/build.fsx/intellisense.fsx"
-#load "docsTool/CLI.fs"
 #if !FAKE
 #r "Facades/netstandard"
 #r "netstandard"
@@ -73,11 +72,6 @@ let distGlob = distDir @@ "*.nupkg"
 let coverageThresholdPercent = 1
 let coverageReportDir =  __SOURCE_DIRECTORY__  @@ "docs" @@ "coverage"
 
-
-let docsDir = __SOURCE_DIRECTORY__  @@ "docs"
-let docsSrcDir = __SOURCE_DIRECTORY__  @@ "docsSrc"
-let docsToolDir = __SOURCE_DIRECTORY__ @@ "docsTool"
-
 let releaseNotes = Fake.Core.ReleaseNotes.load "RELEASE_NOTES.md"
 
 let publishUrl = "https://www.nuget.org"
@@ -140,40 +134,6 @@ module dotnet =
     let fcswatch optionConfig args =
         tool optionConfig "fcswatch" args
 
-open DocsTool.CLIArgs
-module DocsTool =
-    open Argu
-    let buildparser = ArgumentParser.Create<BuildArgs>(programName = "docstool")
-    let buildCLI =
-        [
-            BuildArgs.ProjectGlob srcGlob
-            BuildArgs.DocsOutputDirectory docsDir
-            BuildArgs.DocsSourceDirectory docsSrcDir
-            BuildArgs.ReleaseVersion releaseNotes.NugetVersion
-        ]
-        |> buildparser.PrintCommandLineArgumentsFlat
-
-    let build () =
-        dotnet.run (fun args ->
-            { args with WorkingDirectory = docsToolDir }
-        ) (sprintf " -- build %s" (buildCLI))
-        |> failOnBadExitAndPrint
-
-    let watchparser = ArgumentParser.Create<WatchArgs>(programName = "docstool")
-    let watchCLI =
-        [
-            WatchArgs.ProjectGlob srcGlob
-            WatchArgs.DocsSourceDirectory docsSrcDir
-            WatchArgs.ReleaseVersion releaseNotes.NugetVersion
-        ]
-        |> watchparser.PrintCommandLineArgumentsFlat
-
-    let watch projectpath =
-        dotnet.watch (fun args ->
-           { args with WorkingDirectory = docsToolDir }
-        ) "run" (sprintf "-- watch %s" (watchCLI))
-        |> failOnBadExitAndPrint
-
 //-----------------------------------------------------------------------------
 // Target Implementations
 //-----------------------------------------------------------------------------
@@ -195,14 +155,17 @@ let clean _ =
     |> Seq.iter Shell.rm
 
 let dotnetRestore _ =
-    let restoreExitCode = Shell.Exec("dotnet", "restore", __SOURCE_DIRECTORY__)
-    if restoreExitCode <> 0
-    then failwith "Restore failed"
+    ()
+
+let build dir =
+    let buildResult = Shell.Exec("dotnet", "build -c Release", dir)
+    if buildResult <> 0
+    then failwithf "FAILED %s> dotnet build -c Release" dir
 
 let dotnetBuild _ =
-    let buildResult = Shell.Exec("dotnet", "build", __SOURCE_DIRECTORY__)
-    if buildResult <> 0
-    then failwith "dotnet build failed"
+    build (__SOURCE_DIRECTORY__ </> "src" </> "NpgsqlFSharpAnalyzer.Core")
+    build (__SOURCE_DIRECTORY__ </> "src" </> "NpgsqlFSharpAnalyzer")
+    build (__SOURCE_DIRECTORY__ </> "tests" </> "NpgsqlFSharpAnalyzer.Tests")
 
 let dotnetTest ctx =
     let testResult = Shell.Exec("dotnet", "run", "tests" </> "NpgsqlFSharpAnalyzer.Tests")
@@ -340,24 +303,6 @@ let publishToNuget _ =
     if exitCode <> 0
     then failwith "Could not publish package"
 
-let buildDocs _ =
-    DocsTool.build ()
-
-let watchDocs _ =
-    let watchBuild () =
-        !! srcGlob
-        |> Seq.map(fun proj -> fun () ->
-            dotnet.watch
-                (fun opt ->
-                    opt |> DotNet.Options.withWorkingDirectory (IO.Path.GetDirectoryName proj))
-                "build"
-                ""
-            |> ignore
-        )
-        |> Seq.iter (invokeAsync >> Async.Catch >> Async.Ignore >> Async.Start)
-    watchBuild ()
-    DocsTool.watch ()
-
 
 //-----------------------------------------------------------------------------
 // Target Declaration
@@ -373,8 +318,6 @@ Target.create "GenerateAssemblyInfo" generateAssemblyInfo
 Target.create "DotnetPack" dotnetPack
 Target.create "PublishToNuGet" publishToNuget
 Target.create "Release" ignore
-Target.create "BuildDocs" buildDocs
-Target.create "WatchDocs" watchDocs
 
 //-----------------------------------------------------------------------------
 // Target Dependencies
@@ -390,16 +333,8 @@ Target.create "WatchDocs" watchDocs
 "GenerateAssemblyInfo" ?=> "DotnetBuild"
 "GenerateAssemblyInfo" ==> "PublishToNuGet"
 
-"DotnetBuild" ==> "BuildDocs"
-"BuildDocs" ?=> "PublishToNuget"
-"DotnetPack" ?=> "BuildDocs"
-
-"DotnetBuild" ==> "WatchDocs"
-
-"DotnetRestore"
-    ==> "DotnetBuild"
+"DotnetBuild"
     ==> "DotnetTest"
-    =?> ("GenerateCoverageReport", not disableCodeCoverage)
     ==> "DotnetPack"
     ==> "PublishToNuGet"
     ==> "Release"
