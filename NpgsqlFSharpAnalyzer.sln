@@ -29,7 +29,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		RELEASE_NOTES.md = RELEASE_NOTES.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlFSharpVs", "src\AnalyzerVs\NpgsqlFSharpVs.csproj", "{37577282-1289-40DB-AD3D-24499BD09DAE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlFSharpVs", "src\NpgsqlFSharpVs\NpgsqlFSharpVs.csproj", "{37577282-1289-40DB-AD3D-24499BD09DAE}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "NpgsqlFSharpAnalyzer.Core", "src\NpgsqlFSharpAnalyzer.Core\NpgsqlFSharpAnalyzer.Core.fsproj", "{5964BB56-97B8-4FAE-9933-8113DB11438D}"
 EndProject

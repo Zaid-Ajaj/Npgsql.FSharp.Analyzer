@@ -51,7 +51,9 @@
     <Compile Include="ContentTypeNames.cs" />
     <Compile Include="LintProjectInfo.cs" />
     <Compile Include="Suggestions\LintSuggestionProvider.cs" />
-    <Compile Include="Options\FsLintOptionsPage.cs" />
+    <Compile Include="Options\FsLintOptionsPage.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="FsLintVsPackage.cs" />
     <Compile Include="SubscriptionManager.cs" />
