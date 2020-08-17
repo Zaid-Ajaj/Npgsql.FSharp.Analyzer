@@ -13,6 +13,8 @@ Analyzer that provides embedded **SQL syntax analysis** when writing queries usi
 - Built-in code fixes for the above
 - Ability to write multi-line queries in `[<Literal>]` text and referencing it
 - Free (MIT licensed)
+- Supports VS Code with [Ionide](https://github.com/ionide/ionide-vscode-fsharp) via F# Analyzers SDK
+- Supports Visual Studio
 
 ## NuGet
 
@@ -21,7 +23,24 @@ Analyzer that provides embedded **SQL syntax analysis** when writing queries usi
 | NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) |
 
 
-## Using The Analyzer
+## Using The Analyzer (Visual Studio) 
+
+### 1 - Configure the connection string to your development database
+The analyzer requires a connection string that points to the database you are developing against. You can configure this connection string by either creating a file called `NPGSQL_FSHARP` (without extension) somewhere next to your F# project or preferably in the root of your workspace. This file should contain that connection string and nothing else. An example of the contents of such file:
+```
+Host=localhost; Username=postgres; Password=postgres; Database=databaseName
+```
+> Remember to add an entry in your .gitingore file to make sure you don't commit the connection string to your source version control system.
+
+Another way to configure the connection string is by setting the value of an environment variable named `NPGSQL_FSHARP` that contains the connection string.
+
+The analyzer will try to locate and read the file first, then falls back to using the environment variable.
+
+### 2 - Install the Visual Studio Extension
+
+Download the latest version of `NpgsqlFSharpVs.vsix` from the [Releases](https://github.com/Zaid-Ajaj/Npgsql.FSharp.Analyzer/releases) page and double click the extension to install in on your system.
+
+## Using The Analyzer (VS Code)
 
 ### 1 - Configure the connection string to your development database
 The analyzer requires a connection string that points to the database you are developing against. You can configure this connection string by either creating a file called `NPGSQL_FSHARP` (without extension) somewhere next to your F# project or preferably in the root of your workspace. This file should contain that connection string and nothing else. An example of the contents of such file:
