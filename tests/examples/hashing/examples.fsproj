@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="executingQueryInsteadOfNonQuery.fs" />
+    <Compile Include="usingIntArrayParameter.fs" />
+    <Compile Include="readingUuidArray.fs" />
+    <Compile Include="readingTextArray.fs" />
     <Compile Include="SprintfBlock.fs" />
     <Compile Include="parameterTypeMismatch.fs" />
     <Compile Include="readAttemptIntegerTypeMismatch.fs" />

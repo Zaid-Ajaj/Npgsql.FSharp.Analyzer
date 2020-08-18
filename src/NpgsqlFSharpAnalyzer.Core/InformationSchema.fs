@@ -105,6 +105,7 @@ module InformationSchema =
     type DataType = {
         Name: string
         Schema: string
+        IsArray : bool
         ClrType: Type
     }   with
         member this.FullName = sprintf "%s.%s" this.Schema this.Name
@@ -118,10 +119,12 @@ module InformationSchema =
             else this.FullName
 
         static member Create(x: PostgresTypes.PostgresType) =
+            let clrType = x.ToClrType()
             {
                 Name = x.Name
                 Schema = x.Namespace
-                ClrType = x.ToClrType()
+                ClrType = clrType
+                IsArray = clrType.IsArray
             }
 
     type Schema =
@@ -386,10 +389,12 @@ module InformationSchema =
                             getTypeMapping(dataType)
 
                     let column =
+                        let isArray = string row.["col_data_type"] = "ARRAY"
                         { ColumnAttributeNumber = attnum
                           Name = string row.["col_name"]
-                          DataType = { Name = udtName
+                          DataType = { Name = if isArray then udtName.TrimStart('_') else udtName
                                        Schema = schema.Name
+                                       IsArray = isArray
                                        ClrType = clrType }
                           Nullable = row.["col_not_null"] |> unbox |> not
                           MaxLength = row.GetValueOrDefault("col_max_length", -1)

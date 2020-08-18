@@ -1,3 +1,11 @@
+### 3.11.0 - 2020-08-18
+* Even better error messages that include whether types were arrays or not
+
+#### 3.10.0 - 2020-08-18
+* Better error messages when showing the possible functions to use.
+* Warning when using Sql.execute and the query doesn't return a result set
+* Support for text int and uuid arrays both when reading columns and writing parameters
+
 #### 3.9.0 - 2020-07-19
 * Updated FSharp.Analyzers.SDK to 0.5.0
 

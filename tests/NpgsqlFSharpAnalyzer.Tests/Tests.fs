@@ -160,6 +160,33 @@ let tests =
                 Expect.equal 3 (List.length columns) "There are three columns"
         }
 
+        test "SQL schema analysis with arrays" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, roles text[] not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
+
+            let userColumns =
+                databaseMetadata.Schemas.["public"].Tables
+                |> Seq.tryFind (fun pair -> pair.Key.Name = "users")
+                |> Option.map (fun pair -> pair.Value)
+                |> Option.map List.ofSeq
+
+            match userColumns with
+            | None ->
+                failwith "Expected to find columns for users table"
+            | Some columns ->
+                Expect.equal 2 (List.length columns) "There are three columns"
+                let rolesColumn = columns |> List.find (fun column -> column.Name = "roles")
+                Expect.equal rolesColumn.DataType.Name "text" "The data type is text"
+                Expect.isTrue rolesColumn.DataType.IsArray "The data type is an array"
+                Expect.isFalse rolesColumn.Nullable "The column is not nullable"
+        }
+
         test "SQL query analysis" {
             use db = createTestDatabase()
 
@@ -293,7 +320,103 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.stringContains message.Message "Please use one of [read.bool] instead" "Message contains suggestion to use Sql.readBool"
+                        Expect.stringContains message.Message "Please use read.bool instead" "Message contains suggestion to use Sql.readBool"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: type mismatch when using text[]" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, roles text[] not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/readingTextArray.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Please use read.stringArray instead" "Message contains suggestion to use Sql.stringArray"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: type mismatch when using uuid[]" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, codes uuid[] not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/readingUuidArray.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Please use read.uuidArray instead" "Message contains suggestion to use Sql.stringArray"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: type mismatch when using int[] as parameter" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/usingIntArrayParameter.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Sql.intArray" "Message contains suggestion to use Sql.stringArray"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: detect incorrectly used Sql.execute where as Sql.executeNonQuery was needed" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text, roles text[] not null)"
+            |> Sql.executeNonQuery
+            |> ignore
+
+            match context (find "../examples/hashing/executingQueryInsteadOfNonQuery.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Sql.executeNonQuery" "Message contains suggestion to use Sql.stringArray"
                     | _ ->
                         failwith "Expected only one error message"
         }
