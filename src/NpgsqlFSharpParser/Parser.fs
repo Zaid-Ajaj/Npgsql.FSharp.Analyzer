@@ -32,7 +32,9 @@ let expr = opp.ExpressionParser
 
 let parens parser = between (text "(") (text ")") parser
 
-let commaSeparatedExprs = sepBy expr (text ",")
+let comma = text ","
+
+let commaSeparatedExprs = sepBy expr comma
 
 let selections =
     (star |>> List.singleton)
@@ -69,37 +71,91 @@ let joinExpr =
         <|> attempt outerJoin
         <|> attempt leftJoin
         <|> attempt rightJoin
-     )
+    )
+
+let orderByAsc =
+    let parser = attempt (simpleIdentifier .>> text "ASC") <|> attempt simpleIdentifier
+    parser |>> fun columnName -> Ordering.Asc columnName
+
+let orderByAscNullsFirst =
+    let parser = attempt (simpleIdentifier .>> text "ASC NULLS FIRST")
+    parser |>> fun columnName -> Ordering.AscNullsFirst columnName
+
+let orderByAscNullsLast =
+    let parser = attempt (simpleIdentifier .>> text "ASC NULLS LAST")
+    parser |>> fun columnName -> Ordering.AscNullsLast columnName
+
+let orderByDesc =
+    let parser = attempt (simpleIdentifier .>> text "DESC")
+    parser |>> fun columnName -> Ordering.Desc columnName    
+
+let orderByDescNullsFirst =
+    let parser = attempt (simpleIdentifier .>> text "DESC NULLS FIRST")
+    parser |>> fun columnName -> Ordering.DescNullsFirst columnName
+
+let orderByDescNullsLast =
+    let parser = attempt (simpleIdentifier .>> text "DESC NULLS LAST") 
+    parser |>> fun columnName -> Ordering.DescNullsLast columnName
+
+let orderingExpr =
+    attempt orderByDescNullsLast
+    <|> attempt orderByDescNullsFirst
+    <|> attempt orderByAscNullsLast
+    <|> attempt orderByAscNullsFirst
+    <|> attempt orderByDesc
+    <|> attempt orderByAsc
+
+let optionalExpr parser =
+    (attempt parser |>> Some) <|> preturn None
+
+let optionalOrderingExpr =
+    optionalExpr (text "ORDER BY" >>. (sepBy1 orderingExpr comma))
+    |>> function
+        | Some exprs -> exprs
+        | None -> [ ]
 
 let optionalDistinct =
     optional (attempt (text "DISTINCT ON") <|> attempt (text "DISTINCT"))
 
-let optionalWhereExpr =
-    ((attempt (text "WHERE" >>. expr)) |>> Some)
-    <|> preturn None
+let commaSeparatedIdentifiers = sepBy1 identifier comma
 
-let optionalFromExpr =
-    ((attempt (text "FROM" >>. identifier)) |>> Some)
-    <|> preturn None
+let optionalWhereClause =
+    optionalExpr (text "WHERE" >>. expr)
 
-let selectFromWhere =
+let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
+
+let optionalFrom = optionalExpr (text "FROM" >>. identifier)
+
+let optionalGroupBy =
+    optionalExpr (text "GROUP BY" >>. commaSeparatedIdentifiers)
+    |>> function
+        | Some exprs -> exprs
+        | None -> [ ]
+
+let selectQuery =
     text "SELECT" >>= fun _ ->
     optionalDistinct >>= fun _ -> 
     selections >>= fun selections ->
-    optionalFromExpr >>= fun tableName ->
+    optionalFrom >>= fun tableName ->
     joinExpr >>= fun joinExprs -> 
-    optionalWhereExpr |>> fun whereExpr ->
+    optionalWhereClause >>= fun whereExpr ->
+    optionalGroupBy >>= fun groupByExpr ->
+    optionalHavingClause >>= fun havingExpr ->
+    optionalOrderingExpr |>> fun orderingExprs -> 
         let query =
             { SelectExpr.Default with
                 Columns = selections
                 From = tableName
                 Where = whereExpr
-                Joins = joinExprs }
+                Joins = joinExprs
+                GroupBy = groupByExpr
+                Having = havingExpr
+                OrderBy = orderingExprs }
 
         Expr.Query (TopLevelExpr.Select query)
 
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
-opp.AddOperator(InfixOperator("OR", spaces, 7, Associativity.Left, fun left right -> Expr.Or(left, right)))
+opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spaces, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))
 opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right -> Expr.LessThan(left, right)))
@@ -110,12 +166,12 @@ opp.AddOperator(PostfixOperator("IS NULL", spaces, 8, false, fun value -> Expr.E
 opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 
 opp.TermParser <- choice [
-    star
-    (text "(") >>. expr .>> (text ")")
-    (attempt selectFromWhere)
+    (attempt selectQuery)
     (attempt functionExpr)
-    identifier
+    (text "(") >>. expr .>> (text ")")
+    star
     parameter
+    identifier
 ]
 
 let fullParser = (optional spaces) >>. expr .>> (optional spaces <|> (text ";" |>> fun _ -> ()))

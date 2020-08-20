@@ -29,13 +29,13 @@ type Expr =
     | Between of value:Expr * leftBound:Expr * rightBound:Expr
     | Query of expr:TopLevelExpr
 
-type Ordering = {
-    Column : Expr
-    ASC : bool
-    DESC : bool
-    NullFirst : bool
-    NullLast : bool
-}
+type Ordering =
+    | Asc of columnName:string
+    | Desc of columnName:string
+    | AscNullsFirst of columnName:string
+    | AscNullsLast of columnName:string
+    | DescNullsFirst of columnName:string
+    | DescNullsLast of columnName:string
 
 type JoinExpr =
     | InnerJoin of tableName:string * on:Expr
@@ -50,12 +50,14 @@ type SelectExpr = {
     Where : Expr option
     OrderBy : Ordering list
     GroupBy : Expr list
+    Having : Expr option
 }
   with
     static member Default = {
         Columns  = [ ]
         From = None
         Where = None
+        Having = None
         OrderBy = [ ]
         GroupBy = [ ]
         Joins = [ ]

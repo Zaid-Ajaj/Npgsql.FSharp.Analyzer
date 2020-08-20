@@ -3,9 +3,9 @@ module ParserTests
 open Expecto
 open NpgsqlFSharpParser
 
-let testSelect query expected =
-    test query {
-        match Parser.parse query with
+let testSelect inputQuery expected =
+    test inputQuery {
+        match Parser.parse inputQuery with
         | Ok (Expr.Query (TopLevelExpr.Select query)) ->
             Expect.equal query expected "The query is parsed correctly"
         | Ok somethingElse ->
@@ -14,9 +14,9 @@ let testSelect query expected =
             failwith errorMsg
     }
 
-let ftestSelect query expected =
-    ftest query {
-        match Parser.parse query with
+let ftestSelect inputQuery expected =
+    ftest inputQuery {
+        match Parser.parse inputQuery with
         | Ok (Expr.Query (TopLevelExpr.Select query)) ->
             Expect.equal query expected "The query is parsed correctly"
         | Ok somethingElse ->
@@ -41,6 +41,12 @@ let parserTests = ftestList "Parser tests" [
     testSelect "SELECT username, user_id FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
+            From = Some (Expr.Ident "users") 
+    }
+
+    testSelect "SELECT * FROM users" {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
             From = Some (Expr.Ident "users") 
     }
 
@@ -108,6 +114,41 @@ let parserTests = ftestList "Parser tests" [
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
             })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        WHERE last_login IS NOT NULL
+        ORDER BY last_login
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "last_login")))
+            OrderBy = [ Ordering.Asc("last_login") ]
+    }
+
+    testSelect """
+        SELECT DISTINCT timestamp, value FROM meters
+        WHERE meter_id = @meter_id AND timestamp >= @from
+        ORDER BY timestamp
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "timestamp"; Expr.Ident "value"]
+            From = Some (Expr.Ident "meters")
+            Where = Some (Expr.And(Expr.Equals(Expr.Ident "meter_id", Expr.Parameter "@meter_id"), Expr.GreaterThanOrEqual(Expr.Ident "timestamp", Expr.Parameter "@from")))
+            OrderBy = [ Ordering.Asc("timestamp") ]
+    }
+     
+    testSelect """
+        SELECT username, email FROM users
+        ORDER BY last_login DESC, user_id
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            OrderBy = [ Ordering.Desc("last_login"); Ordering.Asc "user_id" ]
     }
 
     testSelect """
@@ -191,5 +232,58 @@ let parserTests = ftestList "Parser tests" [
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
             })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+        GROUP BY user_id, username
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+
+            GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+        GROUP BY user_id, username
+        HAVING SUM(amount) > users.salary
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+
+            GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
+
+            Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
     }
 ]
