@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NpgsqlFSharpVs", "src\Npgsq
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "NpgsqlFSharpAnalyzer.Core", "src\NpgsqlFSharpAnalyzer.Core\NpgsqlFSharpAnalyzer.Core.fsproj", "{5964BB56-97B8-4FAE-9933-8113DB11438D}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "NpgsqlFSharpParser", "src\NpgsqlFSharpParser\NpgsqlFSharpParser.fsproj", "{BC524F8E-6282-4E31-9A0E-29FCE38832E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +105,18 @@ Global
 		{5964BB56-97B8-4FAE-9933-8113DB11438D}.Release|x64.Build.0 = Release|Any CPU
 		{5964BB56-97B8-4FAE-9933-8113DB11438D}.Release|x86.ActiveCfg = Release|Any CPU
 		{5964BB56-97B8-4FAE-9933-8113DB11438D}.Release|x86.Build.0 = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|x64.Build.0 = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Debug|x86.Build.0 = Debug|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|x64.ActiveCfg = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|x64.Build.0 = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|x86.ActiveCfg = Release|Any CPU
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -114,6 +128,7 @@ Global
 		{8FC9B600-2A16-4E0C-89D7-F61F5F315F3E} = {4CA3F686-DFAB-4AAF-8004-4158E18EF24E}
 		{37577282-1289-40DB-AD3D-24499BD09DAE} = {C397A34C-84F1-49E7-AEBC-2F9F2B196216}
 		{5964BB56-97B8-4FAE-9933-8113DB11438D} = {C397A34C-84F1-49E7-AEBC-2F9F2B196216}
+		{BC524F8E-6282-4E31-9A0E-29FCE38832E7} = {C397A34C-84F1-49E7-AEBC-2F9F2B196216}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BC821061-2FB3-4ABD-9FA1-044D4C59C475}

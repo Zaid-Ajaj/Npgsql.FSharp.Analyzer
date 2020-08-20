@@ -6,6 +6,7 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Include="ParserTests.fs" />
         <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Analyzer.fs" />
         <Compile Include="Tests.fs" />
@@ -14,6 +15,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer\NpgsqlFSharpAnalyzer.fsproj" />
         <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer.Core\NpgsqlFSharpAnalyzer.Core.fsproj" />
+        <ProjectReference Include="..\..\src\NpgsqlFSharpParser\NpgsqlFSharpParser.fsproj" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Expecto" Version="8.13.1" />
