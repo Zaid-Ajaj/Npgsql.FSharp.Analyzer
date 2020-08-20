@@ -26,7 +26,7 @@ let ftestSelect query expected =
     }
 
 [<Tests>]
-let parserTests = testList "Parser tests" [
+let parserTests = ftestList "Parser tests" [
 
     testSelect "SELECT NOW()" {
         SelectExpr.Default with
@@ -102,6 +102,89 @@ let parserTests = testList "Parser tests" [
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "email"]
             From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        JOIN meters ON meters.user_id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            })))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (
+            SELECT id FROM user_ids
+            WHERE id IS NOT NULL
+        )
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
             Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]

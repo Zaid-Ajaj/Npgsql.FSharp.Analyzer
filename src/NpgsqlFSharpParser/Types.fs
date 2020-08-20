@@ -30,7 +30,7 @@ type Expr =
     | Query of expr:TopLevelExpr
 
 type Ordering = {
-    Column : string
+    Column : Expr
     ASC : bool
     DESC : bool
     NullFirst : bool
@@ -38,10 +38,10 @@ type Ordering = {
 }
 
 type JoinExpr =
-    | Join of tableName:string
-    | LeftOuterJoin of tableName:string
-    | RightOuterJoin of tableName:string
-    | FullOuterJoin of tableName:string
+    | InnerJoin of tableName:string * on:Expr
+    | LeftJoin of tableName:string * on:Expr
+    | RightJoin of tableName:string * on:Expr
+    | FullJoin of tableName:string * on:Expr
 
 type SelectExpr = {
     Columns : Expr list

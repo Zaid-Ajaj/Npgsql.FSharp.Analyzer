@@ -3,6 +3,11 @@ module NpgsqlFSharpParser.Parser
 
 open FParsec
 
+let simpleIdentifier : Parser<string, unit> =
+    let isIdentifierFirstChar token = isLetter token
+    let isIdentifierChar token = isLetter token || isDigit token || token = '.' || token = '_'
+    many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier" .>> spaces
+
 let identifier : Parser<Expr, unit> =
     let isIdentifierFirstChar token = isLetter token
     let isIdentifierChar token = isLetter token || isDigit token || token = '.' || token = '_'
@@ -42,44 +47,54 @@ let functionExpr =
     (parens commaSeparatedExprs)
     |>> fun arguments -> Expr.Function(functionName, arguments)
 
+let innerJoin = 
+    (attempt (text "INNER JOIN") <|> attempt (text "JOIN")) >>. simpleIdentifier .>> text "ON" >>= fun tableName ->
+    expr |>> fun expr -> JoinExpr.InnerJoin(tableName, expr)
+
+let outerJoin =
+    (text "OUTER JOIN" <|> text "FULL OUTER JOIN") >>. simpleIdentifier .>> text "ON" >>= fun tableName ->
+    expr |>> fun expr -> JoinExpr.FullJoin(tableName, expr)
+
+let leftJoin =
+    (text "LEFT JOIN") >>. simpleIdentifier .>> text "ON" >>= fun tableName ->
+    expr |>> fun expr -> JoinExpr.LeftJoin(tableName, expr)
+
+let rightJoin =
+    (text "RIGHT JOIN") >>. simpleIdentifier .>> text "ON" >>= fun tableName ->
+    expr |>> fun expr -> JoinExpr.RightJoin(tableName, expr)
+
+let joinExpr =
+    many (
+        attempt innerJoin
+        <|> attempt outerJoin
+        <|> attempt leftJoin
+        <|> attempt rightJoin
+     )
+
 let optionalDistinct =
     optional (attempt (text "DISTINCT ON") <|> attempt (text "DISTINCT"))
+
+let optionalWhereExpr =
+    ((attempt (text "WHERE" >>. expr)) |>> Some)
+    <|> preturn None
+
+let optionalFromExpr =
+    ((attempt (text "FROM" >>. identifier)) |>> Some)
+    <|> preturn None
 
 let selectFromWhere =
     text "SELECT" >>= fun _ ->
     optionalDistinct >>= fun _ -> 
     selections >>= fun selections ->
-    text "FROM" >>= fun _ ->
-    identifier >>= fun tableName ->
-    text "WHERE" >>. expr |>> fun condition ->
+    optionalFromExpr >>= fun tableName ->
+    joinExpr >>= fun joinExprs -> 
+    optionalWhereExpr |>> fun whereExpr ->
         let query =
             { SelectExpr.Default with
                 Columns = selections
-                From = Some tableName
-                Where = Some condition }
-
-        Expr.Query (TopLevelExpr.Select query)
-
-let selectFrom =
-    text "SELECT" >>= fun _ ->
-    optionalDistinct >>= fun _ -> 
-    selections >>= fun selections ->
-    text "FROM" >>= fun _ ->
-    identifier |>> fun tableName ->
-        let query =
-            { SelectExpr.Default with
-                Columns = selections
-                From = Some tableName }
-
-        Expr.Query (TopLevelExpr.Select query)
-
-let primitiveSelect =
-    text "SELECT" >>= fun _ ->
-    optionalDistinct >>= fun _ -> 
-    selections |>> fun selections ->
-        let query =
-            { SelectExpr.Default with
-                Columns = selections }
+                From = tableName
+                Where = whereExpr
+                Joins = joinExprs }
 
         Expr.Query (TopLevelExpr.Select query)
 
@@ -97,7 +112,7 @@ opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Ex
 opp.TermParser <- choice [
     star
     (text "(") >>. expr .>> (text ")")
-    (attempt selectFromWhere <|> attempt selectFrom <|> attempt primitiveSelect)
+    (attempt selectFromWhere)
     (attempt functionExpr)
     identifier
     parameter
