@@ -33,6 +33,10 @@ let parserTests = ftestList "Parser tests" [
             Columns = [Expr.Function("NOW", [])]
     }
 
+    testSelect "SELECT 1" {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
     testSelect "SELECT NOW();" {
         SelectExpr.Default with
             Columns = [Expr.Function("NOW", [])]
@@ -66,6 +70,20 @@ let parserTests = ftestList "Parser tests" [
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users") 
+    }
+
+    testSelect "SELECT COUNT(*) FROM users LIMIT 10" {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Limit = Some(Expr.Integer 10)
+    }
+
+    testSelect "SELECT COUNT(*) FROM users LIMIT @numberOfRows" {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Limit = Some(Expr.Parameter "@numberOfRows")
     }
 
     testSelect "SELECT COUNT(*) FROM users WHERE last_login > @login_date" {
@@ -140,7 +158,7 @@ let parserTests = ftestList "Parser tests" [
             Where = Some (Expr.And(Expr.Equals(Expr.Ident "meter_id", Expr.Parameter "@meter_id"), Expr.GreaterThanOrEqual(Expr.Ident "timestamp", Expr.Parameter "@from")))
             OrderBy = [ Ordering.Asc("timestamp") ]
     }
-     
+
     testSelect """
         SELECT username, email FROM users
         ORDER BY last_login DESC, user_id

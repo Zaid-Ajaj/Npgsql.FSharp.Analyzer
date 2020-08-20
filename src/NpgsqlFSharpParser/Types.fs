@@ -51,6 +51,8 @@ type SelectExpr = {
     OrderBy : Ordering list
     GroupBy : Expr list
     Having : Expr option
+    Limit : Expr option
+    Offset : Expr option
 }
   with
     static member Default = {
@@ -58,6 +60,8 @@ type SelectExpr = {
         From = None
         Where = None
         Having = None
+        Limit = None
+        Offset = None
         OrderBy = [ ]
         GroupBy = [ ]
         Joins = [ ]

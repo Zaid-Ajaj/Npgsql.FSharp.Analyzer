@@ -34,6 +34,14 @@ let parens parser = between (text "(") (text ")") parser
 
 let comma = text ","
 
+let integer : Parser<Expr, unit> =
+    (optional spaces) >>. pint32 .>> (optional spaces)
+    |>> Expr.Integer
+
+let boolean : Parser<Expr, unit> =
+    (text "true" |>> fun _ -> Expr.Boolean true)
+    <|> (text "false" |>> fun _ -> Expr.Boolean false)
+
 let commaSeparatedExprs = sepBy expr comma
 
 let selections =
@@ -87,7 +95,7 @@ let orderByAscNullsLast =
 
 let orderByDesc =
     let parser = attempt (simpleIdentifier .>> text "DESC")
-    parser |>> fun columnName -> Ordering.Desc columnName    
+    parser |>> fun columnName -> Ordering.Desc columnName
 
 let orderByDescNullsFirst =
     let parser = attempt (simpleIdentifier .>> text "DESC NULLS FIRST")
@@ -119,12 +127,15 @@ let optionalDistinct =
 
 let commaSeparatedIdentifiers = sepBy1 identifier comma
 
-let optionalWhereClause =
-    optionalExpr (text "WHERE" >>. expr)
+let optionalWhereClause = optionalExpr (text "WHERE" >>. expr)
 
 let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
 
 let optionalFrom = optionalExpr (text "FROM" >>. identifier)
+
+let optionalLimit = optionalExpr (text "LIMIT" >>. expr)
+
+let optionalOffset = optionalExpr (text "OFFSET" >>. expr)
 
 let optionalGroupBy =
     optionalExpr (text "GROUP BY" >>. commaSeparatedIdentifiers)
@@ -141,7 +152,9 @@ let selectQuery =
     optionalWhereClause >>= fun whereExpr ->
     optionalGroupBy >>= fun groupByExpr ->
     optionalHavingClause >>= fun havingExpr ->
-    optionalOrderingExpr |>> fun orderingExprs -> 
+    optionalOrderingExpr >>= fun orderingExprs ->
+    optionalLimit >>= fun limitExpr ->
+    optionalOffset |>> fun offsetExpr -> 
         let query =
             { SelectExpr.Default with
                 Columns = selections
@@ -150,7 +163,9 @@ let selectQuery =
                 Joins = joinExprs
                 GroupBy = groupByExpr
                 Having = havingExpr
-                OrderBy = orderingExprs }
+                OrderBy = orderingExprs
+                Limit = limitExpr
+                Offset = offsetExpr }
 
         Expr.Query (TopLevelExpr.Select query)
 
@@ -162,6 +177,7 @@ opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right
 opp.AddOperator(InfixOperator("<=", spaces, 9, Associativity.Left, fun left right -> Expr.LessThanOrEqual(left, right)))
 opp.AddOperator(InfixOperator(">=", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThanOrEqual(left, right)))
 opp.AddOperator(InfixOperator("=", spaces, 9, Associativity.Left, fun left right -> Expr.Equals(left, right)))
+opp.AddOperator(InfixOperator("<>", spaces, 9, Associativity.Left, fun left right -> Expr.Not(Expr.Equals(left, right))))
 opp.AddOperator(PostfixOperator("IS NULL", spaces, 8, false, fun value -> Expr.Equals(Expr.Null, value)))
 opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 
@@ -172,6 +188,8 @@ opp.TermParser <- choice [
     star
     parameter
     identifier
+    integer
+    boolean
 ]
 
 let fullParser = (optional spaces) >>. expr .>> (optional spaces <|> (text ";" |>> fun _ -> ()))
