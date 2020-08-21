@@ -24,6 +24,7 @@ type Expr =
     | SelectQuery of expr:SelectExpr
     | DeleteQuery of expr:DeleteExpr
     | InsertQuery of expr: InsertExpr
+    | UpdateQuery of expr: UpdateExpr
 
 type Ordering =
     | Asc of columnName:string
@@ -66,10 +67,17 @@ type SelectExpr = {
 type UpdateExpr = {
     Table : string
     Where : Expr option
-    Assignments : (string * Expr) list
-    ConflictResolution : (string * Expr) list
+    Assignments : Expr list
+    ConflictResolution : Expr list
     Returning : Expr list
-}
+} with
+    static member Default = {
+        Table = ""
+        Where = None
+        Returning = [ ]
+        Assignments = [ ]
+        ConflictResolution = [ ]
+    }
 
 type DeleteExpr = {
     Table : string

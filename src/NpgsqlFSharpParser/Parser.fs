@@ -38,6 +38,10 @@ let integer : Parser<Expr, unit> =
     (optional spaces) >>. pint32 .>> (optional spaces)
     |>> Expr.Integer
 
+let number : Parser<Expr, unit> =
+    (optional spaces) >>. pfloat .>> (optional spaces)
+    |>> Expr.Float
+
 let boolean : Parser<Expr, unit> =
     (text "true" |>> fun _ -> Expr.Boolean true)
     <|> (text "false" |>> fun _ -> Expr.Boolean false)
@@ -218,6 +222,22 @@ let insertQuery =
 
         preturn (Expr.InsertQuery query)
 
+let updateQuery =
+    text "UPDATE " >>. simpleIdentifier >>= fun tableName ->
+    text "SET " >>= fun _ ->
+    (sepBy1 expr comma) >>= fun assignments ->
+    optionalWhereClause >>= fun whereExpr ->
+    optionalRetuningExpr >>= fun returningExpr ->
+        let query = {
+            UpdateExpr.Default with
+                Table = tableName
+                Where = whereExpr
+                Returning = returningExpr
+                Assignments = assignments
+        }
+        
+        preturn (Expr.UpdateQuery query)
+
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spaces, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
@@ -231,6 +251,7 @@ opp.AddOperator(PostfixOperator("IS NULL", spaces, 8, false, fun value -> Expr.E
 opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 
 opp.TermParser <- choice [
+    (attempt updateQuery)
     (attempt insertQuery)
     (attempt deleteQuery)
     (attempt selectQuery)
@@ -239,6 +260,7 @@ opp.TermParser <- choice [
     star
     integer
     boolean
+    number
     stringLiteral
     identifier
     parameter
