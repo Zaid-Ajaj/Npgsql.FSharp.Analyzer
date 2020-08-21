@@ -1,18 +1,12 @@
 namespace rec NpgsqlFSharpParser
 
 [<RequireQualifiedAccess>]
-type TopLevelExpr =
-    | Select of SelectExpr
-    | Insert of InsertExpr
-    | Delete of DeleteExpr
-    | Update of UpdateExpr
-
-[<RequireQualifiedAccess>]
 type Expr =
     | Star
     | Ident of string
     | Parameter of string
     | Boolean of bool
+    | StringLiteral of string
     | Integer of int
     | Float of float
     | Null
@@ -27,7 +21,9 @@ type Expr =
     | GreaterThanOrEqual of left:Expr * right:Expr
     | LessThanOrEqual of left:Expr * right:Expr
     | Between of value:Expr * leftBound:Expr * rightBound:Expr
-    | Query of expr:TopLevelExpr
+    | SelectQuery of expr:SelectExpr
+    | DeleteQuery of expr:DeleteExpr
+    | InsertQuery of expr: InsertExpr
 
 type Ordering =
     | Asc of columnName:string
@@ -69,20 +65,36 @@ type SelectExpr = {
 
 type UpdateExpr = {
     Table : string
-    Assignments : Map<string, Expr list>
-    ConflictResolution : Map<string, Expr list>
+    Where : Expr option
+    Assignments : (string * Expr) list
+    ConflictResolution : (string * Expr) list
     Returning : Expr list
 }
 
 type DeleteExpr = {
     Table : string
     Where : Expr option
-}
+    Returning : Expr list
+} with
+    static member Default =
+        {
+            Table = "";
+            Where = None
+            Returning = [ ]
+        }
 
 type InsertExpr = {
     Table: string
     Columns : string list
     Values : Expr list
-    ConflictResolution : Map<string, Expr list>
+    ConflictResolution : (string * Expr) list
     Returning : Expr list
-}
+} with
+    static member Default =
+        {
+            Table = "";
+            Columns = [ ]
+            Values = [ ]
+            ConflictResolution = [ ]
+            Returning = [ ]
+        }

@@ -42,6 +42,20 @@ let boolean : Parser<Expr, unit> =
     (text "true" |>> fun _ -> Expr.Boolean true)
     <|> (text "false" |>> fun _ -> Expr.Boolean false)
 
+// Applies popen, then pchar repeatedly until pclose succeeds,
+// returns the string in the middle
+let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
+
+// Parses any string between popen and pclose
+let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
+
+// Parses any string between double quotes
+let quotedString = skipChar '\'' |> anyStringBetween <| skipChar '\''
+
+let stringLiteral : Parser<Expr, unit> =
+    quotedString
+    |>> Expr.StringLiteral
+
 let commaSeparatedExprs = sepBy expr comma
 
 let selections =
@@ -122,6 +136,12 @@ let optionalOrderingExpr =
         | Some exprs -> exprs
         | None -> [ ]
 
+let optionalRetuningExpr =
+    optionalExpr (text "RETURNING " >>. selections)
+    |>> function
+        | Some exprs -> exprs
+        | None -> [ ]
+
 let optionalDistinct =
     optional (attempt (text "DISTINCT ON") <|> attempt (text "DISTINCT"))
 
@@ -154,7 +174,7 @@ let selectQuery =
     optionalHavingClause >>= fun havingExpr ->
     optionalOrderingExpr >>= fun orderingExprs ->
     optionalLimit >>= fun limitExpr ->
-    optionalOffset |>> fun offsetExpr -> 
+    optionalOffset >>= fun offsetExpr -> 
         let query =
             { SelectExpr.Default with
                 Columns = selections
@@ -167,7 +187,36 @@ let selectQuery =
                 Limit = limitExpr
                 Offset = offsetExpr }
 
-        Expr.Query (TopLevelExpr.Select query)
+        preturn (Expr.SelectQuery query)
+
+let deleteQuery =
+    text "DELETE FROM " >>. simpleIdentifier >>= fun tableName ->
+    optionalWhereClause >>= fun where ->
+    optionalRetuningExpr >>= fun returningExpr ->
+        let query = {
+            DeleteExpr.Default with
+                Table = tableName
+                Where = where
+                Returning = returningExpr
+        }
+
+        preturn (Expr.DeleteQuery query)
+
+let insertQuery =
+    text "INSERT INTO " >>. simpleIdentifier >>= fun tableName ->
+    (parens (sepBy1 simpleIdentifier comma)) >>= fun columns ->
+    text "VALUES" >>= fun _ ->
+    (parens (sepBy1 expr comma)) >>= fun values ->
+    optionalRetuningExpr >>= fun returningExpr ->
+        let query = {
+            InsertExpr.Default with 
+                Table = tableName
+                Columns = columns
+                Values = values
+                Returning = returningExpr
+        }
+
+        preturn (Expr.InsertQuery query)
 
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
@@ -182,14 +231,17 @@ opp.AddOperator(PostfixOperator("IS NULL", spaces, 8, false, fun value -> Expr.E
 opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 
 opp.TermParser <- choice [
+    (attempt insertQuery)
+    (attempt deleteQuery)
     (attempt selectQuery)
     (attempt functionExpr)
     (text "(") >>. expr .>> (text ")")
     star
-    parameter
-    identifier
     integer
     boolean
+    stringLiteral
+    identifier
+    parameter
 ]
 
 let fullParser = (optional spaces) >>. expr .>> (optional spaces <|> (text ";" |>> fun _ -> ()))
@@ -198,3 +250,8 @@ let parse (input: string) : Result<Expr, string> =
     match run fullParser input with
     | Success(result,_,_) -> Result.Ok result
     | Failure(errMsg,_,_) -> Result.Error errMsg
+
+let parseUnsafe query =
+    match parse query with
+    | Result.Ok output -> output
+    | Result.Error errorMsg -> failwith errorMsg

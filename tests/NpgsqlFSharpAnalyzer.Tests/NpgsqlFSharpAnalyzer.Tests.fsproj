@@ -6,7 +6,9 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Include="ParserTests.fs" />
+        <Compile Include="ParseInsertTests.fs" />
+        <Compile Include="ParseDeleteTests.fs" />
+        <Compile Include="ParseSelectTests.fs" />
         <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Analyzer.fs" />
         <Compile Include="Tests.fs" />

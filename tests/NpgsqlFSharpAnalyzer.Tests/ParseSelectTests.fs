@@ -1,4 +1,4 @@
-module ParserTests
+module ParseSelectTests
 
 open Expecto
 open NpgsqlFSharpParser
@@ -6,7 +6,7 @@ open NpgsqlFSharpParser
 let testSelect inputQuery expected =
     test inputQuery {
         match Parser.parse inputQuery with
-        | Ok (Expr.Query (TopLevelExpr.Select query)) ->
+        | Ok (Expr.SelectQuery query) ->
             Expect.equal query expected "The query is parsed correctly"
         | Ok somethingElse ->
             failwithf "Unexpected select statement %A" somethingElse
@@ -17,7 +17,7 @@ let testSelect inputQuery expected =
 let ftestSelect inputQuery expected =
     ftest inputQuery {
         match Parser.parse inputQuery with
-        | Ok (Expr.Query (TopLevelExpr.Select query)) ->
+        | Ok (Expr.SelectQuery query) ->
             Expect.equal query expected "The query is parsed correctly"
         | Ok somethingElse ->
             failwithf "Unexpected select statement %A" somethingElse
@@ -26,7 +26,7 @@ let ftestSelect inputQuery expected =
     }
 
 [<Tests>]
-let parserTests = ftestList "Parser tests" [
+let selectQueryTests = testList "Parse SELECT tests" [
 
     testSelect "SELECT NOW()" {
         SelectExpr.Default with
@@ -126,12 +126,12 @@ let parserTests = ftestList "Parser tests" [
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "email"]
             From = Some (Expr.Ident "users")
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
     }
 
     testSelect """
@@ -179,12 +179,12 @@ let parserTests = ftestList "Parser tests" [
             Columns = [Expr.Ident "username"; Expr.Ident "email"]
             From = Some (Expr.Ident "users")
             Joins = [JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
     }
 
     testSelect """
@@ -197,12 +197,12 @@ let parserTests = ftestList "Parser tests" [
             Columns = [Expr.Ident "username"; Expr.Ident "email"]
             From = Some (Expr.Ident "users")
             Joins = [JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
     }
 
     testSelect """
@@ -219,12 +219,12 @@ let parserTests = ftestList "Parser tests" [
                 JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
                 JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
             ]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
     }
 
     testSelect """
@@ -244,12 +244,12 @@ let parserTests = ftestList "Parser tests" [
                 JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
                 JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
             ]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
     }
 
     testSelect """
@@ -267,12 +267,12 @@ let parserTests = ftestList "Parser tests" [
                 JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
                 JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
             ]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
 
             GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
     }
@@ -293,15 +293,80 @@ let parserTests = ftestList "Parser tests" [
                 JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
                 JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
             ]
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.Query(TopLevelExpr.Select {
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
                 SelectExpr.Default with
                     Columns = [Expr.Ident "id"]
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
-            })))
+            }))
 
             GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+        GROUP BY user_id, username
+        HAVING SUM(amount) > users.salary
+        LIMIT 20
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            }))
+
+            GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
+
+            Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
+
+            Limit = Some (Expr.Integer 20)
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        INNER JOIN meters ON meters.user_id = users.user_id
+        LEFT JOIN utilities ON utilities.id = users.user_id
+        WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
+        GROUP BY user_id, username
+        HAVING SUM(amount) > users.salary
+        LIMIT 20
+        OFFSET 100
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Joins = [
+                JoinExpr.InnerJoin("meters", Expr.Equals(Expr.Ident "meters.user_id", Expr.Ident "users.user_id"))
+                JoinExpr.LeftJoin("utilities", Expr.Equals(Expr.Ident "utilities.id", Expr.Ident "users.user_id"))
+            ]
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Ident "id"]
+                    From = Some (Expr.Ident "user_ids")
+                    Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
+            }))
+
+            GroupBy = [Expr.Ident "user_id"; Expr.Ident "username"]
+
+            Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
+
+            Limit = Some (Expr.Integer 20)
+
+            Offset = Some (Expr.Integer 100)
     }
 ]
