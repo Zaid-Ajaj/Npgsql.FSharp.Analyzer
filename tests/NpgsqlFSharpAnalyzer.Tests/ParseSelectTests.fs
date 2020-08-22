@@ -37,6 +37,26 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with Columns = [Expr.Integer 1]
     }
 
+    testSelect "SELECT 1::text" {
+        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1, Expr.Ident "text")]
+    }
+
+    testSelect "SELECT @input::text, value::ltree" {
+        SelectExpr.Default with
+            Columns = [
+                Expr.TypeCast(Expr.Parameter "@input", Expr.Ident "text")
+                Expr.TypeCast(Expr.Ident "value", Expr.Ident "ltree")
+            ]
+    }
+
+    testSelect "SELECT @input || 'hello', value::ltree" {
+        SelectExpr.Default with
+            Columns = [
+                Expr.StringConcat(Expr.Parameter "@input", Expr.StringLiteral "hello")
+                Expr.TypeCast(Expr.Ident "value", Expr.Ident "ltree")
+            ]
+    }
+
     testSelect "SELECT NOW();" {
         SelectExpr.Default with
             Columns = [Expr.Function("NOW", [])]

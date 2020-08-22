@@ -247,6 +247,8 @@ opp.AddOperator(InfixOperator("<=", spaces, 9, Associativity.Left, fun left righ
 opp.AddOperator(InfixOperator(">=", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThanOrEqual(left, right)))
 opp.AddOperator(InfixOperator("=", spaces, 9, Associativity.Left, fun left right -> Expr.Equals(left, right)))
 opp.AddOperator(InfixOperator("<>", spaces, 9, Associativity.Left, fun left right -> Expr.Not(Expr.Equals(left, right))))
+opp.AddOperator(InfixOperator("||", spaces, 9, Associativity.Left, fun left right -> Expr.StringConcat(left, right)))
+opp.AddOperator(InfixOperator("::", spaces, 9, Associativity.Left, fun left right -> Expr.TypeCast(left, right)))
 opp.AddOperator(PostfixOperator("IS NULL", spaces, 8, false, fun value -> Expr.Equals(Expr.Null, value)))
 opp.AddOperator(PostfixOperator("IS NOT NULL", spaces, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 

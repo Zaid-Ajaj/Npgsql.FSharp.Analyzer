@@ -14,6 +14,8 @@ type Expr =
     | And of left:Expr * right:Expr
     | Or of left:Expr * right:Expr
     | In of left:Expr * right:Expr
+    | StringConcat of left:Expr * right:Expr
+    | TypeCast of left:Expr * right:Expr
     | Not of expr:Expr
     | Equals of left:Expr * right:Expr
     | GreaterThan of left:Expr * right:Expr
