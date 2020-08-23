@@ -37,6 +37,10 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with Columns = [Expr.Integer 1]
     }
 
+    testSelect "SELECT ''" {
+        SelectExpr.Default with Columns = [Expr.StringLiteral ""]
+    }
+
     testSelect "SELECT 1::text" {
         SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1, Expr.Ident "text")]
     }
@@ -90,6 +94,28 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users") 
+    }
+
+    testSelect "SELECT COUNT(*) AS user_count FROM users" {
+        SelectExpr.Default with
+            Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
+            From = Some (Expr.Ident "users") 
+    }
+
+    testSelect "SELECT ename || empno AS EmpDetails, COALESCE(comm,0) AS TOTALSAL FROM sales" {
+        SelectExpr.Default with
+            Columns = [
+                Expr.As(Expr.StringConcat(Expr.Ident "ename", Expr.Ident "empno"), Expr.Ident "EmpDetails")
+                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0 ]), Expr.Ident "TOTALSAL")
+            ]
+
+            From = Some (Expr.Ident "sales")
+    }
+
+    testSelect "SELECT COUNT(*) AS user_count FROM users as u" {
+        SelectExpr.Default with
+            Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u")) 
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT 10" {

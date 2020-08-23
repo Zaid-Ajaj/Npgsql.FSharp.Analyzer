@@ -2,6 +2,7 @@
 module NpgsqlFSharpParser.Parser
 
 open FParsec
+open System
 
 let simpleIdentifier : Parser<string, unit> =
     let isIdentifierFirstChar token = isLetter token
@@ -54,7 +55,9 @@ let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
 let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
 
 // Parses any string between double quotes
-let quotedString = skipChar '\'' |> anyStringBetween <| skipChar '\''
+let quotedString =
+    (attempt (pstring "''") |>> fun _ -> String.Empty) 
+    <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
     quotedString
@@ -155,7 +158,19 @@ let optionalWhereClause = optionalExpr (text "WHERE" >>. expr)
 
 let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
 
-let optionalFrom = optionalExpr (text "FROM" >>. identifier)
+let optionalFrom =
+    optionalExpr (
+        attempt (
+            text "FROM " >>. simpleIdentifier >>= fun table ->
+            text "AS" >>= fun _ ->
+            simpleIdentifier >>= fun alias ->
+            preturn (Expr.As(Expr.Ident table, Expr.Ident alias))
+        )
+        <|>
+        attempt (
+            text "FROM" >>. identifier
+        )
+    )
 
 let optionalLimit = optionalExpr (text "LIMIT" >>. expr)
 
@@ -239,6 +254,7 @@ let updateQuery =
         preturn (Expr.UpdateQuery query)
 
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
+opp.AddOperator(InfixOperator("AS", spaces, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
 opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spaces, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))

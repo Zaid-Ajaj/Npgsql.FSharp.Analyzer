@@ -2,6 +2,7 @@ namespace rec NpgsqlFSharpParser
 
 [<RequireQualifiedAccess>]
 type Expr =
+    | Null
     | Star
     | Ident of string
     | Parameter of string
@@ -9,11 +10,11 @@ type Expr =
     | StringLiteral of string
     | Integer of int
     | Float of float
-    | Null
     | Function of name:string * arguments:Expr list
     | And of left:Expr * right:Expr
     | Or of left:Expr * right:Expr
     | In of left:Expr * right:Expr
+    | As of left:Expr * right:Expr
     | StringConcat of left:Expr * right:Expr
     | TypeCast of left:Expr * right:Expr
     | Not of expr:Expr
