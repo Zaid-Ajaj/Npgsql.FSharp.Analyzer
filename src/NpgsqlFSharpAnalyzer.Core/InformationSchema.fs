@@ -186,7 +186,8 @@ module InformationSchema =
           Precision: byte
           Scale : byte
           Optional: bool
-          DataType: DataType }
+          DataType: DataType
+          IsNullable : bool }
         with
 
         member this.Size = this.MaxLength
@@ -249,7 +250,8 @@ module InformationSchema =
                   Precision = p.Precision
                   Scale = p.Scale
                   Optional = allParametersOptional
-                  DataType = DataType.Create(p.PostgresType) } ]
+                  DataType = DataType.Create(p.PostgresType)
+                  IsNullable = true } ]
 
         let enums =
             outputColumns

@@ -3,12 +3,63 @@ namespace Npgsql.FSharp.Analyzers.Core
 open System
 open FSharp.Compiler.Range
 open F23.StringSimilarity
+open NpgsqlFSharpParser
+open InformationSchema
 
 module SqlAnalysis =
+
+    let determineParameterNullability (parameters: Parameter list) (schema: DbSchemaLookups) query =
+        match Parser.parse query with
+        | Result.Error error -> parameters
+        | Result.Ok (Expr.SelectQuery query) ->
+            match query.Limit with
+            | None -> parameters
+            | Some (Expr.Parameter(name)) ->
+                let parameter = name.TrimStart('@')
+                parameters
+                |> List.map (fun param ->
+                    if param.Name = parameter
+                    then { param with IsNullable = false }
+                    else param
+                )
+            | Some otherExpr ->
+                parameters
+
+        | Result.Ok (Expr.InsertQuery query) ->
+
+            let findParameter (expr, column) =
+                match expr with
+                | Expr.Parameter parameterName ->
+                    Some (parameterName.TrimStart '@', column)
+                | _ ->
+                    None
+
+            let insertParameters =
+                query.Columns
+                |> List.zip query.Values
+                |> List.choose findParameter
+
+            let columnNonNullable columnName =
+                schema.Columns
+                |> Seq.exists (fun column -> column.Value.Name = columnName && not column.Value.Nullable)
+
+            parameters
+            |> List.map (fun requiredParameter ->
+                insertParameters
+                |> List.tryFind (fun (parameter, column) -> parameter = requiredParameter.Name && columnNonNullable column)
+                |> function
+                    | None -> requiredParameter
+                    | Some _ -> { requiredParameter with IsNullable = false }
+            )
+
+        | Result.Ok expr ->
+            parameters
+            
     let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
         try
             let parameters, output, enums = InformationSchema.extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
-            Result.Ok (parameters, output)
+            let enrichedParameters = determineParameterNullability parameters dbSchemaLookups commandText
+            Result.Ok (enrichedParameters, output)
         with
         | ex ->
             Result.Error ex.Message
@@ -166,8 +217,12 @@ module SqlAnalysis =
                                         if providedParam.paramFunc <> "Sql.int16" &&  providedParam.paramFunc <> "Sql.int16OrNone" && providedParam.paramFunc <> "Sql.dbnull"
                                         then yield typeMismatch [ "Sql.int16"; "Sql.int16OrNone"; "Sql.dbnull" ]
                                     | ("int64" | "bigint" |"bigserial") ->
-                                        if providedParam.paramFunc <> "Sql.int64" &&  providedParam.paramFunc <> "Sql.int64OrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.int64"; "Sql.int64OrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.int64" && providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.int64OrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.int64"; "Sql.int"; "Sql.int64OrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.int64" && providedParam.paramFunc <> "Sql.int"
+                                            then yield typeMismatch [ "Sql.int64"; "Sql.int" ]
                                     | ("numeric" | "decimal" | "money") ->
                                         if providedParam.paramFunc <> "Sql.decimal" &&  providedParam.paramFunc <> "Sql.decimalOrNone" && providedParam.paramFunc <> "Sql.dbnull"
                                         then yield typeMismatch [ "Sql.decimal"; "Sql.decimalOrNone"; "Sql.dbnull" ]
@@ -195,8 +250,12 @@ module SqlAnalysis =
                                         then yield typeMismatch [ "Sql.jsonb"; "Sql.jsonbOrNone"; "Sql.dbnull" ]
 
                                     | ("text"|"json"|"xml") ->
-                                        if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.text"; "Sql.string"; "Sql.textOrNone"; "Sql.stringOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.string" && providedParam.paramFunc <> "Sql.textOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.text"; "Sql.string"; "Sql.textOrNone"; "Sql.stringOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.text" && providedParam.paramFunc <> "Sql.string"
+                                            then yield typeMismatch [ "Sql.text"; "Sql.string" ]
                                     | _ ->
                                         ()
                                 else
@@ -508,7 +567,7 @@ module SqlAnalysis =
             match queryAnalysis with
             | Result.Error queryError ->
                 [ createWarning queryError queryRange ]
-            | Result.Ok (parameters, outputColunms) ->
+            | Result.Ok (parameters, outputColunms) -> 
                 let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
                 [
                     yield! analyzeParameters operation parameters
