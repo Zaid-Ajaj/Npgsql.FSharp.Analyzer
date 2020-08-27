@@ -8,6 +8,12 @@ open InformationSchema
 
 module SqlAnalysis =
 
+    type ComparisonParameter = {
+        parameterName : string
+        column : string
+        table : string option 
+    }
+
     let rec trimParams = function
         | Expr.Parameter(name) -> Expr.Parameter(name.TrimStart '@')
 
@@ -77,6 +83,70 @@ module SqlAnalysis =
         | Result.Error error -> Result.Error error
         | Result.Ok expr -> Result.Ok (trimParams expr)
 
+    let columnParameterTable (parameterName: string) (columnName: string) =
+        if columnName.Contains "." then
+            let parts = columnName.Split '.'
+            { parameterName = parameterName; column = parts.[1]; table = Some parts.[0] }
+        else
+            { parameterName = parameterName; column = columnName; table = None }
+
+    let rec findComparisonParameters = function
+        | Expr.Equals(Expr.Ident columnName, Expr.Parameter parameterName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.Equals(Expr.Parameter parameterName, Expr.Ident columnName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.LessThan(Expr.Ident columnName, Expr.Parameter parameterName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.LessThan(Expr.Parameter parameterName, Expr.Ident columnName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.LessThanOrEqual(Expr.Ident columnName, Expr.Parameter parameterName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.LessThanOrEqual(Expr.Parameter parameterName, Expr.Ident columnName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.GreaterThan(Expr.Ident columnName, Expr.Parameter parameterName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.GreaterThan(Expr.Parameter parameterName, Expr.Ident columnName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.GreaterThanOrEqual(Expr.Ident columnName, Expr.Parameter parameterName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.GreaterThanOrEqual(Expr.Parameter parameterName, Expr.Ident columnName) ->
+            [ columnParameterTable parameterName columnName ]
+
+        | Expr.Not(expression) -> findComparisonParameters expression
+
+        | Expr.And(leftExpression, rightExpression) ->
+            [
+                yield! findComparisonParameters leftExpression
+                yield! findComparisonParameters rightExpression
+            ]
+
+        | Expr.Or(leftExpression, rightExpression) ->
+            [
+                yield! findComparisonParameters leftExpression
+                yield! findComparisonParameters rightExpression
+            ]
+
+        | expression -> [ ]
+
+    let containsNonInnerJoins (query: SelectExpr) =
+        query.Joins
+        |> List.exists (function
+            | JoinExpr.FullJoin _ -> true
+            | JoinExpr.LeftJoin _ -> true
+            | JoinExpr.RightJoin _ -> true
+            | JoinExpr.InnerJoin _ -> false
+        )
+
+
     let determineParameterNullability (parameters: Parameter list) (schema: DbSchemaLookups) query =
         match parseQueryTrimmed query with
         | Result.Error error -> parameters
@@ -107,14 +177,137 @@ module SqlAnalysis =
                     | Some _ -> { requiredParameter with IsNullable = false }
             )
 
+        | Result.Ok (Expr.UpdateQuery query) ->
+            let columnNonNullable columnName (table: Option<string>) =
+                schema.Columns
+                |> Seq.exists (fun column ->
+                    column.Value.Name = columnName
+                    && not column.Value.Nullable
+                    && table = Some column.Value.BaseTableName
+                )
+
+            let comparisonParameters =
+                match query.Where with
+                | None -> [ ]
+                | Some whereExpr ->
+                    findComparisonParameters whereExpr
+                    |> List.map (fun comparison ->
+                        match comparison.table with
+                        | None -> { comparison with table = Some query.Table }
+                        | _ -> comparison
+                    )
+
+            let updateAssignments =
+                query.Assignments
+                |> List.choose (function
+                    | Expr.Equals(Expr.Ident columnName, Expr.Parameter parameter) ->
+                        Some (parameter, columnName)
+                    | _ ->
+                        None
+                )
+
+            parameters
+            // determine nullability on comparison operators
+            |> List.map (fun requiredParameter ->
+                comparisonParameters
+                |> List.tryFind (fun comparison ->
+                    comparison.parameterName = requiredParameter.Name
+                    && columnNonNullable comparison.column comparison.table)
+                |> function
+                    | None -> requiredParameter
+                    | Some _ -> { requiredParameter with IsNullable = false }
+            )
+            // determine nullability on update assignments
+            |> List.map (fun requiredParameter ->
+                updateAssignments
+                |> List.tryFind (fun (parameter, column) -> parameter = requiredParameter.Name && columnNonNullable column (Some query.Table))
+                |> function
+                    | None -> requiredParameter
+                    | Some _ -> { requiredParameter with IsNullable = false }
+            )
+
+        | Result.Ok (Expr.DeleteQuery query) ->
+            let columnNonNullable columnName (table: Option<string>) =
+                schema.Columns
+                |> Seq.exists (fun column ->
+                    column.Value.Name = columnName
+                    && not column.Value.Nullable
+                    && table = Some column.Value.BaseTableName
+                )
+
+            let comparisonParameters =
+                match query.Where with
+                | None -> [ ]
+                | Some whereExpr ->
+                    findComparisonParameters whereExpr
+                    |> List.map (fun comparison ->
+                        match comparison.table with
+                        | None -> { comparison with table = Some query.Table }
+                        | _ -> comparison
+                    )
+
+            parameters
+            |> List.map (fun requiredParameter ->
+                comparisonParameters
+                |> List.tryFind (fun comparison ->
+                    comparison.parameterName = requiredParameter.Name
+                    && columnNonNullable comparison.column comparison.table)
+                |> function
+                    | None -> requiredParameter
+                    | Some _ -> { requiredParameter with IsNullable = false }
+            )
+
+
+        | Result.Ok (Expr.SelectQuery query) ->
+            if containsNonInnerJoins query || query.From.IsNone then
+                // When query includes non-INNER JOINS, things get complicated
+                // Implement later...
+                parameters
+
+            else
+
+                let columnNonNullable columnName (table: Option<string>) =
+                    schema.Columns
+                    |> Seq.exists (fun column ->
+                        column.Value.Name = columnName
+                        && not column.Value.Nullable
+                        && table = Some column.Value.BaseTableName
+                    )
+
+                let comparisonParameters =
+                    match query.Where with
+                    | None -> [ ]
+                    | Some whereExpr ->
+                        findComparisonParameters whereExpr
+                        |> List.map (fun comparison ->
+                            match comparison.table, query.From with
+                            | None, Some (Expr.Ident table) ->
+                                { comparison with table = Some table }
+                            | None, Some (Expr.As(Expr.Ident table, alias)) ->
+                                { comparison with table = Some table }
+                            | _ ->
+                                comparison
+                        )
+
+                parameters
+                |> List.map (fun requiredParameter ->
+                    comparisonParameters
+                    |> List.tryFind (fun comparison ->
+                        comparison.parameterName = requiredParameter.Name
+                        && columnNonNullable comparison.column comparison.table)
+                    |> function
+                        | None -> requiredParameter
+                        | Some _ -> { requiredParameter with IsNullable = false }
+                )
+
         | Result.Ok expr ->
             parameters
-            
+
     let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
         try
             let parameters, output, enums = InformationSchema.extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
-            let enrichedParameters = determineParameterNullability parameters dbSchemaLookups commandText
-            Result.Ok (enrichedParameters, output)
+            let parametersWithNullability = determineParameterNullability parameters dbSchemaLookups commandText
+            Result.Ok (parametersWithNullability, output)
         with
         | ex ->
             Result.Error ex.Message
@@ -260,17 +453,37 @@ module SqlAnalysis =
                                 if not requiredParam.DataType.IsArray then 
                                     match requiredParam.DataType.Name with
                                     | "bit" ->
-                                        if providedParam.paramFunc <> "Sql.bit" &&  providedParam.paramFunc <> "Sql.bitOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.bit"; "Sql.bitOrNone";"Sql.dbnull"]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.bit" &&  providedParam.paramFunc <> "Sql.bitOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.bit"; "Sql.bitOrNone";"Sql.dbnull"]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.bit"
+                                            then yield typeMismatch [ "Sql.bit" ]
+
                                     | ("bool" | "boolean") ->
-                                        if providedParam.paramFunc <> "Sql.bool" &&  providedParam.paramFunc <> "Sql.boolOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.bool"; "Sql.boolOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.bool" &&  providedParam.paramFunc <> "Sql.boolOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.bool"; "Sql.boolOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.bool"
+                                            then yield typeMismatch [ "Sql.bool" ]
+
                                     | ("int" | "int32" | "integer" | "serial") ->
-                                        if providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.intOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.int"; "Sql.intOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.intOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.int"; "Sql.intOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.int"
+                                            then yield typeMismatch [ "Sql.int" ]
+
                                     | ("smallint" | "int16") ->
-                                        if providedParam.paramFunc <> "Sql.int16" &&  providedParam.paramFunc <> "Sql.int16OrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.int16"; "Sql.int16OrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.int16" &&  providedParam.paramFunc <> "Sql.int16OrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.int16"; "Sql.int16OrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.int16"
+                                            then yield typeMismatch [ "Sql.int16" ]
+
                                     | ("int64" | "bigint" |"bigserial") ->
                                         if requiredParam.IsNullable then 
                                             if providedParam.paramFunc <> "Sql.int64" && providedParam.paramFunc <> "Sql.int" &&  providedParam.paramFunc <> "Sql.int64OrNone" && providedParam.paramFunc <> "Sql.dbnull"
@@ -278,31 +491,70 @@ module SqlAnalysis =
                                         else
                                             if providedParam.paramFunc <> "Sql.int64" && providedParam.paramFunc <> "Sql.int"
                                             then yield typeMismatch [ "Sql.int64"; "Sql.int" ]
+                                    
                                     | ("numeric" | "decimal" | "money") ->
-                                        if providedParam.paramFunc <> "Sql.decimal" &&  providedParam.paramFunc <> "Sql.decimalOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.decimal"; "Sql.decimalOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.decimal" &&  providedParam.paramFunc <> "Sql.decimalOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.decimal"; "Sql.decimalOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.decimal"
+                                            then yield typeMismatch [ "Sql.decimal" ]
+
                                     | "double precision" ->
-                                        if providedParam.paramFunc <> "Sql.double" &&  providedParam.paramFunc <> "Sql.doubleOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.double"; "Sql.doubleOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.double" &&  providedParam.paramFunc <> "Sql.doubleOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.double"; "Sql.doubleOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.double"
+                                            then yield typeMismatch [ "Sql.double" ]
+
                                     | "bytea" ->
-                                        if providedParam.paramFunc <> "Sql.bytea" &&  providedParam.paramFunc <> "Sql.byteaOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.bytea"; "Sql.byteaOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.bytea" &&  providedParam.paramFunc <> "Sql.byteaOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.bytea"; "Sql.byteaOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.bytea"
+                                            then yield typeMismatch [ "Sql.bytea" ]
+
                                     | "uuid" ->
-                                        if providedParam.paramFunc <> "Sql.uuid" &&  providedParam.paramFunc <> "Sql.uuidOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.uuid"; "Sql.uuidOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.uuid" &&  providedParam.paramFunc <> "Sql.uuidOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.uuid"; "Sql.uuidOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.uuid"
+                                            then yield typeMismatch [ "Sql.uuid" ]
+
                                     | "date" ->
-                                        if providedParam.paramFunc <> "Sql.date" &&  providedParam.paramFunc <> "Sql.dateOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.date"; "Sql.dateOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.date" &&  providedParam.paramFunc <> "Sql.dateOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.date"; "Sql.dateOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.date"
+                                            then yield typeMismatch [ "Sql.date" ]
+
                                     | ("timestamp"|"timestamp without time zone") ->
-                                        if providedParam.paramFunc <> "Sql.timestamp" &&  providedParam.paramFunc <> "Sql.timestampOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.timestamp"; "Sql.timestampOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.timestamp" &&  providedParam.paramFunc <> "Sql.timestampOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.timestamp"; "Sql.timestampOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.timestamp"
+                                            then yield typeMismatch [ "Sql.timestamp" ]
+
                                     | ("timestamptz" | "timestamp with time zone") ->
-                                        if providedParam.paramFunc <> "Sql.timestamptz" &&  providedParam.paramFunc <> "Sql.timestamptzOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.timestamptz"; "Sql.timestamptzOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.timestamptz" &&  providedParam.paramFunc <> "Sql.timestamptzOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.timestamptz"; "Sql.timestamptzOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.timestamptz"
+                                            then yield typeMismatch [ "Sql.timestamptz" ]
 
                                     | "jsonb" ->
-                                        if providedParam.paramFunc <> "Sql.jsonb" && providedParam.paramFunc <> "Sql.jsonbOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.jsonb"; "Sql.jsonbOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.jsonb" && providedParam.paramFunc <> "Sql.jsonbOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.jsonb"; "Sql.jsonbOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.jsonb"
+                                            then yield typeMismatch [ "Sql.jsonb" ]
 
                                     | ("text"|"json"|"xml") ->
                                         if requiredParam.IsNullable then 
@@ -317,15 +569,28 @@ module SqlAnalysis =
                                     // data type is array
                                     match requiredParam.DataType.Name.Replace("[]", "") with
                                     | ("int" | "int32" | "integer" | "serial" | "int64" | "bigint" |"bigserial") ->
-                                        if providedParam.paramFunc <> "Sql.intArray" &&  providedParam.paramFunc <> "Sql.intArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.intArray"; "Sql.intArrayOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.intArray" &&  providedParam.paramFunc <> "Sql.intArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.intArray"; "Sql.intArrayOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.intArray"
+                                            then yield typeMismatch [ "Sql.intArray" ]
+
                                     | "uuid" ->
-                                        if providedParam.paramFunc <> "Sql.uuidArray" &&  providedParam.paramFunc <> "Sql.uuidArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.uuidArray"; "Sql.uuidArrayOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then
+                                            if providedParam.paramFunc <> "Sql.uuidArray" &&  providedParam.paramFunc <> "Sql.uuidArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.uuidArray"; "Sql.uuidArrayOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.uuidArray"
+                                            then yield typeMismatch [ "Sql.uuidArray" ]
 
                                     | ("text"|"json"|"xml") ->
-                                        if providedParam.paramFunc <> "Sql.stringArray" &&  providedParam.paramFunc <> "Sql.stringArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
-                                        then yield typeMismatch [ "Sql.stringArray"; "Sql.stringArrayOrNone"; "Sql.dbnull" ]
+                                        if requiredParam.IsNullable then 
+                                            if providedParam.paramFunc <> "Sql.stringArray" &&  providedParam.paramFunc <> "Sql.stringArrayOrNone" && providedParam.paramFunc <> "Sql.dbnull"
+                                            then yield typeMismatch [ "Sql.stringArray"; "Sql.stringArrayOrNone"; "Sql.dbnull" ]
+                                        else
+                                            if providedParam.paramFunc <> "Sql.stringArray"
+                                            then yield typeMismatch [ "Sql.stringArray" ]
                                     | _ ->
                                         ()
                 ]

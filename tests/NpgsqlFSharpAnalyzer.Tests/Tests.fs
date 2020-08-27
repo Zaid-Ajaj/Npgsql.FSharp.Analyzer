@@ -14,6 +14,10 @@ let analyzers = [
 let inline find file = IO.Path.Combine(__SOURCE_DIRECTORY__ , file)
 let project = IO.Path.Combine(__SOURCE_DIRECTORY__, "../examples/hashing/examples.fsproj")
 
+let raiseWhenFailed = function
+    | Result.Ok _ -> ()
+    | Result.Error error -> raise error
+
 let inline context file =
     AnalyzerBootstrap.context file
     |> Option.map SqlAnalyzer.sqlAnalyzerContext
@@ -166,7 +170,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, roles text[] not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
 
@@ -193,7 +197,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
 
@@ -209,7 +213,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
             let query = "SELECT COUNT(*) FROM users"
@@ -236,7 +240,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query createFuncQuery
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             let databaseMetadata = InformationSchema.getDbSchemaLookups db.ConnectionString
             let query = "SELECT Increment(@Input)"
@@ -257,7 +261,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/semanticAnalysis-missingColumn.fs") with
             | None -> failwith "Could not crack project"
@@ -282,7 +286,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/semanticAnalysis-missingParameter.fs") with
             | None -> failwith "Could not crack project"
@@ -307,7 +311,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/semanticAnalysis-typeMismatch.fs") with
             | None -> failwith "Could not crack project"
@@ -331,7 +335,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, roles text[] not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/readingTextArray.fs") with
             | None -> failwith "Could not crack project"
@@ -355,7 +359,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, codes uuid[] not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/readingUuidArray.fs") with
             | None -> failwith "Could not crack project"
@@ -379,7 +383,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/usingIntArrayParameter.fs") with
             | None -> failwith "Could not crack project"
@@ -451,7 +455,7 @@ let tests =
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/readAttemptIntegerTypeMismatch.fs") with
             | None -> failwith "Could not crack project"
@@ -469,13 +473,93 @@ let tests =
                         failwith "Expected only one error message"
         }
 
+        test "SQL query semantic analysis: type mismatch with comparing against non-nullable column during SELECT" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/selectWithNonNullableColumnComparison.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Sql.int instead" "Message contains suggestion to use Sql.readBool"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+
+        test "SQL query semantic analysis: type mismatch with comparing against non-nullable column during SELECT with JOINS" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE user_roles (user_role_id serial primary key, role_description text not null, user_id int not null references users(user_id))"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/selectWithInnerJoins.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.stringContains message.Message "Sql.int instead" "Message contains suggestion to use Sql.readBool"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
+
+        test "SQL query semantic analysis: type mismatch with comparing against non-nullable column during UPDATE with assignments" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id serial primary key, username text not null, last_login timestamptz)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/updateQueryWithParametersInAssignments.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                    match messages with
+                    | [ firstMessage; secondMessage ] ->
+                        Expect.stringContains firstMessage.Message "Sql.int instead" "Suggest to use non-nullable Sql.int"
+                        Expect.stringContains secondMessage.Message "Sql.text or Sql.string" "Suggest to use non-nullable text"
+                    | _ ->
+                        failwith "Expected only one error message"
+        }
+
         test "SQL query semantic analysis: redundant parameters" {
             use db = createTestDatabase()
 
             Sql.connect db.ConnectionString
             |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
             |> Sql.executeNonQuery
-            |> ignore
+            |> raiseWhenFailed
 
             match context (find "../examples/hashing/semanticAnalysis-redundantParameters.fs") with
             | None -> failwith "Could not crack project"

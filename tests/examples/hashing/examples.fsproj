@@ -5,6 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="updateQueryWithParametersInAssignments.fs" />
+    <Compile Include="selectWithInnerJoins.fs" />
+    <Compile Include="selectWithNonNullableColumnComparison.fs" />
     <Compile Include="insertQueryWithNonNullableParameter.fs" />
     <Compile Include="executingQueryInsteadOfNonQuery.fs" />
     <Compile Include="usingIntArrayParameter.fs" />
