@@ -8,29 +8,84 @@ open InformationSchema
 
 module SqlAnalysis =
 
-    let determineParameterNullability (parameters: Parameter list) (schema: DbSchemaLookups) query =
-        match Parser.parse query with
-        | Result.Error error -> parameters
-        | Result.Ok (Expr.SelectQuery query) ->
-            match query.Limit with
-            | None -> parameters
-            | Some (Expr.Parameter(name)) ->
-                let parameter = name.TrimStart('@')
-                parameters
-                |> List.map (fun param ->
-                    if param.Name = parameter
-                    then { param with IsNullable = false }
-                    else param
-                )
-            | Some otherExpr ->
-                parameters
+    let rec trimParams = function
+        | Expr.Parameter(name) -> Expr.Parameter(name.TrimStart '@')
 
+        | Expr.Function(funcName, arguments) ->
+            let modifiedArguments = List.map trimParams arguments
+            Expr.Function(funcName, modifiedArguments)
+
+        | Expr.SelectQuery query ->
+            Expr.SelectQuery {
+                query with
+                    Columns = List.map trimParams query.Columns
+                    Where = Option.map trimParams query.Where
+                    Limit = Option.map trimParams query.Limit
+                    GroupBy = List.map trimParams query.GroupBy
+                    Having = Option.map trimParams query.Having
+                    Offset = Option.map trimParams query.Offset
+            }
+
+        | Expr.InsertQuery query ->
+            Expr.InsertQuery {
+                query with
+                    Values = List.map trimParams query.Values
+                    Returning = List.map trimParams query.Returning
+                    ConflictResolution =
+                        query.ConflictResolution
+                        |> List.map (fun (column, expr) -> column, trimParams expr) 
+            }
+
+        | Expr.DeleteQuery query ->
+            Expr.DeleteQuery {
+                query with
+                    Where = Option.map trimParams query.Where
+                    Returning = List.map trimParams query.Returning
+            }
+
+        | Expr.UpdateQuery query ->
+            Expr.UpdateQuery {
+                query with
+                    Where = Option.map trimParams query.Where
+                    Assignments = List.map trimParams query.Assignments
+                    ConflictResolution = List.map trimParams query.ConflictResolution
+                    Returning = List.map trimParams query.Returning
+            }
+
+        | Expr.And(left, right) -> Expr.And(trimParams left, trimParams right)
+
+        | Expr.Or(left, right) -> Expr.Or(trimParams left, trimParams right)
+
+        | Expr.Equals(left, right) -> Expr.Equals(trimParams left, trimParams right)
+
+        | Expr.Not(expr) -> Expr.Not(trimParams expr)
+
+        | Expr.In(left, right) -> Expr.In(trimParams left, trimParams right)
+
+        | Expr.LessThan(left, right) -> Expr.LessThan(trimParams left, trimParams right)
+
+        | Expr.LessThanOrEqual(left, right) -> Expr.LessThanOrEqual(trimParams left, trimParams right)
+
+        | Expr.GreaterThan(left, right) -> Expr.GreaterThan(trimParams left, trimParams right)
+
+        | Expr.GreaterThanOrEqual(left, right) -> Expr.GreaterThanOrEqual(trimParams left, trimParams right)
+
+        | expr -> expr
+
+    let parseQueryTrimmed query =
+        match Parser.parse query with
+        | Result.Error error -> Result.Error error
+        | Result.Ok expr -> Result.Ok (trimParams expr)
+
+    let determineParameterNullability (parameters: Parameter list) (schema: DbSchemaLookups) query =
+        match parseQueryTrimmed query with
+        | Result.Error error -> parameters
         | Result.Ok (Expr.InsertQuery query) ->
 
             let findParameter (expr, column) =
                 match expr with
                 | Expr.Parameter parameterName ->
-                    Some (parameterName.TrimStart '@', column)
+                    Some (parameterName, column)
                 | _ ->
                     None
 

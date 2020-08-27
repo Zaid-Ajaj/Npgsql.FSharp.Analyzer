@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <Compile Include="insertQueryWithNonNullableParameter.fs" />
-    <Compile Include="limitExpressionTest.fs" />
     <Compile Include="executingQueryInsteadOfNonQuery.fs" />
     <Compile Include="usingIntArrayParameter.fs" />
     <Compile Include="readingUuidArray.fs" />

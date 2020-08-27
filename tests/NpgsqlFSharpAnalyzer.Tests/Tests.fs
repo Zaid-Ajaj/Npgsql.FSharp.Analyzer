@@ -416,36 +416,12 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.stringContains message.Message "Sql.executeNonQuery" "Message contains suggestion to use Sql.stringArray"
+                        Expect.stringContains message.Message "Sql.executeNonQuery" "Message contains suggestion to use Sql.executeNonQuery"
                     | _ ->
                         failwith "Expected only one error message"
         }
 
-        test "SQL query semantic analysis: delect incorrectly used nullable parameter on LIMIT expression" {
-            use db = createTestDatabase()
-
-            Sql.connect db.ConnectionString
-            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null)"
-            |> Sql.executeNonQuery
-            |> ignore
-
-            match context (find "../examples/hashing/limitExpressionTest.fs") with
-            | None -> failwith "Could not crack project"
-            | Some context ->
-                match SqlAnalysis.databaseSchema db.ConnectionString with
-                | Result.Error connectionError ->
-                    failwith connectionError
-                | Result.Ok schema ->
-                    let operation = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
-                    let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
-                    match messages with
-                    | [ message ] ->
-                        Expect.stringContains message.Message "Sql.int64 or Sql.int" "Message contains suggestion to use Sql.stringArray"
-                    | _ ->
-                        failwith "Expected only one error message"
-        }
-
-        test "SQL query semantic analysis: delect incorrectly used nullable parameter on non-nullable column insert" {
+        test "SQL query semantic analysis: detect incorrectly used nullable parameter on non-nullable column insert" {
             use db = createTestDatabase()
 
             Sql.connect db.ConnectionString
@@ -464,7 +440,7 @@ let tests =
                     let messages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
                     match messages with
                     | [ message ] ->
-                        Expect.stringContains message.Message "Sql.text or Sql.string" "Message contains suggestion to use Sql.stringArray"
+                        Expect.stringContains message.Message "Sql.text or Sql.string" "Message contains suggestion to use non-nullable text functions"
                     | _ ->
                         failwith "Expected only one error message"
         }
