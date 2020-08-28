@@ -14,6 +14,8 @@ nuget Npgsql
 nuget ThrowawayDb.Postgres
 nuget Npgsql.FSharp
 nuget F23.StringSimilarity
+nuget FParsec 1.1.1
+
 // [ FAKE GROUP ]
 group Build
     storage: none
