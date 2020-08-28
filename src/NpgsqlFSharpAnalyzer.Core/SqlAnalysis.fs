@@ -5,6 +5,7 @@ open FSharp.Compiler.Range
 open F23.StringSimilarity
 open NpgsqlFSharpParser
 open InformationSchema
+open Npgsql
 
 module SqlAnalysis =
 
@@ -309,8 +310,10 @@ module SqlAnalysis =
             let parametersWithNullability = determineParameterNullability parameters dbSchemaLookups commandText
             Result.Ok (parametersWithNullability, output)
         with
-        | ex ->
-            Result.Error ex.Message
+        | :? PostgresException as databaseError ->
+            Result.Error databaseError.Message
+        | error ->
+            Result.Error (sprintf "%s\n%s" error.Message error.StackTrace)
 
     let createWarning (message: string) (range: range) : Message =
         { Message = message;

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <DefineConstants>LOW_TRUST</DefineConstants>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Internals.fs" />
+    <Compile Include="Range.fs" />
+    <Compile Include="Emit.fs" />
+    <Compile Include="StaticMapping.fsi" />
+    <Compile Include="StaticMapping.fs" />
+    <Compile Include="Error.fsi" />
+    <Compile Include="Error.fs" />
+    <Compile Include="Primitives.fsi" />
+    <Compile Include="Primitives.fs" />
+    <Compile Include="CharParsers.fsi" />
+    <Compile Include="CharParsers.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="4.7.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FParsecCS\FParsecCS.csproj" />
+  </ItemGroup>
+
+</Project>
