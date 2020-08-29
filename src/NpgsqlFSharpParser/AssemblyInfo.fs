@@ -2,7 +2,7 @@
 namespace System
 open System.Reflection
 
-[<assembly: AssemblyTitleAttribute("NpgsqlFSharpAnalyzer.Tests")>]
+[<assembly: AssemblyTitleAttribute("NpgsqlFSharpParser")>]
 [<assembly: AssemblyProductAttribute("NpgsqlFSharpAnalyzer")>]
 [<assembly: AssemblyVersionAttribute("3.12.0")>]
 [<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-08-29T00:00:00.0000000")>]
@@ -13,7 +13,7 @@ open System.Reflection
 do ()
 
 module internal AssemblyVersionInformation =
-    let [<Literal>] AssemblyTitle = "NpgsqlFSharpAnalyzer.Tests"
+    let [<Literal>] AssemblyTitle = "NpgsqlFSharpParser"
     let [<Literal>] AssemblyProduct = "NpgsqlFSharpAnalyzer"
     let [<Literal>] AssemblyVersion = "3.12.0"
     let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-08-29T00:00:00.0000000"

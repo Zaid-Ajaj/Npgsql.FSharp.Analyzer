@@ -221,7 +221,7 @@ let tests =
             match resultSetMetadata with
             | Result.Error errorMsg ->
                 failwithf "Could not analyse result set metadata %s" errorMsg
-            | Result.Ok (parameters, outputColumns) ->
+            | Result.Ok (parameters, outputColumns, _) ->
                 Expect.isEmpty parameters "Query shouldn't contain any parameters"
                 Expect.equal 1 outputColumns.Length "There is one column returned"
         }
@@ -248,7 +248,7 @@ let tests =
             match resultSetMetadata with
             | Result.Error errorMsg ->
                 failwithf "Could not analyse result set metadata %s" errorMsg
-            | Result.Ok (parameters, outputColumns) ->
+            | Result.Ok (parameters, outputColumns, _) ->
                 Expect.equal 1 parameters.Length "Query has one parameter"
                 Expect.equal "integer" parameters.[0].DataType.Name "The parameter is int4"
                 Expect.equal 1 outputColumns.Length "There is one column returned"

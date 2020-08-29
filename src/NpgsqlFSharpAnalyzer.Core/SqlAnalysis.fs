@@ -304,15 +304,57 @@ module SqlAnalysis =
         | Result.Ok expr ->
             parameters
 
+    let missingInsertColumns (schema: DbSchemaLookups) (query:string) =
+        match Parser.parse query with
+        | Result.Error _ -> None
+        | Result.Ok expression ->
+            match expression with
+            | Expr.InsertQuery insertQuery ->
+                let missingInsertColumns =
+                    schema.Columns.Values
+                    |> Seq.filter (fun column -> column.BaseTableName = insertQuery.Table && not column.OptionalForInsert)
+                    |> Seq.filter (fun column -> not (List.contains column.Name insertQuery.Columns))
+
+                if Seq.isEmpty missingInsertColumns then
+                    None
+                else
+                    let errorMessage =
+                        missingInsertColumns
+                        |> Seq.map (fun column -> sprintf "'%s'" column.Name)
+                        |> Seq.toList
+                        |> function
+                             | [ ] -> "<empty>"
+                             | [ first ] -> first
+                             | [ first; second ] -> sprintf "%s and %s" first second
+                             | columns ->
+                                 let lastColumn = List.last columns
+                                 let firstColumns =
+                                     columns
+                                     |> List.rev
+                                     |> List.skip 1
+                                     |> List.rev
+                                     |> String.concat ", "
+
+                                 sprintf "%s and %s" firstColumns lastColumn
+
+                        |> fun columns -> sprintf "INSERT query is missing required columns %s when adding rows to the '%s' table" columns insertQuery.Table
+
+                    Some errorMessage
+            | _ ->
+                None
+
     let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
         try
             let parameters, output, enums = InformationSchema.extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
             let parametersWithNullability = determineParameterNullability parameters dbSchemaLookups commandText
-            Result.Ok (parametersWithNullability, output)
+            let potentiallyMissingColumns = missingInsertColumns dbSchemaLookups commandText
+            Result.Ok (parametersWithNullability, output, potentiallyMissingColumns)
         with
         | :? PostgresException as databaseError ->
-            Result.Error databaseError.Message
+            // errors such as syntax errors are reported here
+            Result.Error (sprintf "%s: %s" databaseError.Severity databaseError.MessageText)
         | error ->
+            // any other generic error
             Result.Error (sprintf "%s\n%s" error.Message error.StackTrace)
 
     let createWarning (message: string) (range: range) : Message =
@@ -409,6 +451,8 @@ module SqlAnalysis =
                             let warning =
                                 if String.IsNullOrWhiteSpace(providedParam.name)
                                 then createWarning (sprintf "Empty parameter name was provided. Please provide one of %s" expectedParameters) providedParam.range
+                                else if List.length codeFixes = 1
+                                then createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'?" providedParam.name closestAlternative) providedParam.range
                                 else createWarning (sprintf "Unexpected parameter '%s' is provided. Did you mean '%s'? %s" providedParam.name closestAlternative expectedParameters) providedParam.range
 
                             yield { warning with Fixes = codeFixes }
@@ -453,7 +497,10 @@ module SqlAnalysis =
 
                                     { createWarning warning providedParam.paramFuncRange with Fixes = codeFixs }
 
-                                if not requiredParam.DataType.IsArray then 
+                                if providedParam.paramFunc = "Sql.parameter" then
+                                    // do not do anything when the input is a generic param
+                                    ()
+                                else if not requiredParam.DataType.IsArray then 
                                     match requiredParam.DataType.Name with
                                     | "bit" ->
                                         if requiredParam.IsNullable then 
@@ -617,7 +664,7 @@ module SqlAnalysis =
                 match findColumn attempt.columnName availableColumns with
                 | None ->
                     if List.isEmpty availableColumns then
-                        let warningMsg = sprintf "Attempting to read column named '%s' from a result set which doesn't return any columns. In case you are executing DELETE, INSERT or UPDATE queries, you might want to use Sql.executeNonQuery or Sql.executeNonQueryAsync to obtain the number of affected rows." attempt.columnName
+                        let warningMsg = sprintf "Attempting to read column named '%s' from a result set which doesn't return any columns. In case you are executing DELETE, INSERT or UPDATE queries, you might want to use Sql.executeNonQuery or Sql.executeNonQueryAsync to obtain the number of affected rows. You can also add a RETURNING clause in your query to make it return the rows which are updated, inserted or deleted from that query." attempt.columnName
                         yield createWarning warningMsg attempt.columnNameRange
                     else
                     let levenshtein = new NormalizedLevenshtein()
@@ -890,9 +937,15 @@ module SqlAnalysis =
             match queryAnalysis with
             | Result.Error queryError ->
                 [ createWarning queryError queryRange ]
-            | Result.Ok (parameters, outputColunms) -> 
+            | Result.Ok (parameters, outputColunms, errorMessage) ->
+                let potentialInsertQueryError =
+                    match errorMessage with
+                    | None -> [ ]
+                    | Some message -> [ createWarning message queryRange ]
+
                 let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
                 [
+                    yield! potentialInsertQueryError
                     yield! analyzeParameters operation parameters
                     yield! analyzeColumnReadingAttempts readingAttempts outputColunms
                 ]
