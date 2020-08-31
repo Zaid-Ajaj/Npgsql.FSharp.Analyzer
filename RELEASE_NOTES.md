@@ -1,3 +1,6 @@
+### 3.12.1 - 2020-08-31
+* Remove NpgsqlFSharpAnalyzer.Core nuget package reference from the analyzer
+
 ### 3.12.0 - 2020-08-29
 * Parameter nullability inference for parsable queries
 * Detecting the missing columns which are required for INSERT queries

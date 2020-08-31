@@ -255,6 +255,8 @@ let generateAssemblyInfo _ =
      )
 
 let dotnetPack ctx =
+    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
+
     let args =
         [
             "pack"
@@ -280,6 +282,16 @@ let dotnetPack ctx =
 
             let publishPath = "src" </> "NpgsqlFSharpAnalyzer" </> "bin" </> "Release" </> "netcoreapp2.0" </> "publish"
             ZipFile.ExtractToDirectory(nupkg, nugetParent </> nugetFileName)
+            let nuspecFile = nugetParent </> nugetFileName </> "NpgsqlFSharpAnalyzer.nuspec"
+            // rewriteNuspec
+            nuspecFile
+            |> File.ReadAllLines
+            |> Array.choose (fun line ->
+                if line.Contains "<dependency id=\"NpgsqlFSharpAnalyzer.Core\""
+                then None
+                else Some line)
+            |> fun content -> File.WriteAllLines(nuspecFile, content)
+
             File.Delete nupkg
             Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0")
             Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0") publishPath (fun _ -> true)
@@ -319,6 +331,7 @@ Target.create "DotnetPack" dotnetPack
 Target.create "PublishToNuGet" publishToNuget
 Target.create "Release" ignore
 
+Target.create "PackNoTests" dotnetPack
 //-----------------------------------------------------------------------------
 // Target Dependencies
 //-----------------------------------------------------------------------------
