@@ -10,8 +10,9 @@ Analyzer that provides embedded **SQL syntax analysis** when writing queries usi
 - Detecting parameters with type-mismatch
 - Verifying the columns being read from the result set and their types
 - Detecting nullable columns
-- Built-in code fixes for the above
+- Built-in code fixes and nice error messages
 - Ability to write multi-line queries in `[<Literal>]` text and referencing it
+- Ability to suppress the warnings when you know better than the analyzer ;) 
 - Free (MIT licensed)
 - Supports VS Code with [Ionide](https://github.com/ionide/ionide-vscode-fsharp) via F# Analyzers SDK
 - Supports Visual Studio
@@ -107,22 +108,25 @@ let activeUsers (connectionString: string) =
 ```
 Just remember that these `[<Literal>]` strings have to defined in the same module where the query is written.
 
+### Suppressing the generated warning messages
 
----
+Use the `Sql.skipAnalysis` function from main library to tell the analyzer to skip the analysis of a code block like this one:
+```fs
+open Npgsql.FSharp
+
+let badQuery connection =
+    connection
+    |> Sql.query "SELECT * FROM non_existing_table"
+    |> Sql.skipAnalysis
+    |> Sql.execute (fun read -> read.int64 "user_id") 
+```
 
 ### Developing
 
 Make sure the following **requirements** are installed on your system:
 
 - [dotnet SDK](https://www.microsoft.com/net/download/core) 3.0 or higher
-- [Mono](http://www.mono-project.com/) if you're on Linux or macOS.
 - Postgres database server
-
-or
-
-- [VSCode Dev Container](https://code.visualstudio.com/docs/remote/containers)
-
----
 
 ### Building
 

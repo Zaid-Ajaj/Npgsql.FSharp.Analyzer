@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="syntaxAnalysis-detectingSkipAnalysis.fs" />
+    <Compile Include="syntaxAnalysisReferencingQueryDoesNotGiveError.fs" />
     <Compile Include="updateQueryWithParametersInAssignments.fs" />
     <Compile Include="selectWithInnerJoins.fs" />
     <Compile Include="selectWithNonNullableColumnComparison.fs" />
@@ -28,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql.FSharp" Version="3.3.0" />
+    <PackageReference Include="Npgsql.FSharp" Version="3.7.0" />
   </ItemGroup>
 
 </Project>

@@ -16,6 +16,7 @@ type Expr =
     | In of left:Expr * right:Expr
     | As of left:Expr * right:Expr
     | StringConcat of left:Expr * right:Expr
+    | JsonIndex of left:Expr * right:Expr
     | TypeCast of left:Expr * right:Expr
     | Not of expr:Expr
     | Equals of left:Expr * right:Expr

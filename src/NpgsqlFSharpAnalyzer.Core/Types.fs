@@ -56,6 +56,7 @@ type SqlAnalyzerBlock =
     | StoredProcedure of string * range
     | Parameters of UsedParameter list *  range
     | ReadingColumns of ColumnReadAttempt list
+    | SkipAnalysis 
 
 type SqlOperation = {
     blocks : SqlAnalyzerBlock list

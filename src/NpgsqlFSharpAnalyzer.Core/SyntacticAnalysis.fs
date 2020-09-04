@@ -35,6 +35,22 @@ module SyntacticAnalysis =
             | _ -> None
         | _ -> None
 
+    let (|Applied|_|) = function
+        | SynExpr.App(atomicFlag, isInfix, funcExpr, argExpr, applicationRange) ->
+            match argExpr with
+            | SynExpr.Ident ident -> Some (ident.idText, funcExpr.Range, applicationRange)
+            | SynExpr.LongIdent(isOptional, longDotId, altName, identRange) ->
+                match longDotId with
+                | LongIdentWithDots(listOfIds, ranges) ->
+                    let fullName =
+                        listOfIds
+                        |> List.map (fun id -> id.idText)
+                        |> String.concat "."
+
+                    Some (fullName, funcExpr.Range, applicationRange)
+            | _ -> None
+        | _ -> None
+
     let (|ParameterTuple|_|) = function
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); Apply(funcName, exprArgs, funcRange, appRange) ], commaRange, tupleRange) ->
             Some (parameterName, paramRange, funcName, funcRange, Some appRange)
@@ -158,6 +174,15 @@ module SyntacticAnalysis =
             [ SqlAnalyzerBlock.LiteralQuery(identifier, range) ]
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [ yield! findQuery funcExpr; yield! findQuery argExpr ]
+        | _ ->
+            [ ]
+
+    let rec findSkipAnalysis expr =
+        match expr with
+        | Applied("Sql.skipAnalysis", range, appRange) ->
+            [ SqlAnalyzerBlock.SkipAnalysis ]
+        | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
+            [ yield! findSkipAnalysis funcExpr; yield! findSkipAnalysis argExpr ]
         | _ ->
             [ ]
 
@@ -310,6 +335,7 @@ module SyntacticAnalysis =
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
                     yield! findFunc funcExpr
+                    yield! findSkipAnalysis funcExpr
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
@@ -317,10 +343,12 @@ module SyntacticAnalysis =
 
             | Apply(("Sql.execute"|"Sql.executeAsync"|"Sql.executeRow"|"Sql.executeRowAsync"|"Sql.iter"|"Sql.iterAsync"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
+                let x = 1
                 let blocks = [
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
                     yield! findFunc funcExpr
+                    yield! findSkipAnalysis funcExpr
                     yield SqlAnalyzerBlock.ReadingColumns columns
                 ]
 
@@ -348,6 +376,7 @@ module SyntacticAnalysis =
 
                 let blocks = [
                     yield! findQuery funcExpr
+                    yield! findSkipAnalysis funcExpr
                     yield SqlAnalyzerBlock.Parameters(sqlParameters, range)
                 ]
 
@@ -358,6 +387,18 @@ module SyntacticAnalysis =
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
+                    yield! findSkipAnalysis funcExpr
+                ]
+
+                [ { blocks = blocks; range = range; } ]
+
+            | Apply("Sql.skipAnalysis", functionArg, range, appRange) ->
+                let blocks = [
+                    yield! findFunc funcExpr
+                    yield! findQuery funcExpr
+                    yield! findParameters funcExpr
+                    yield SqlAnalyzerBlock.SkipAnalysis
+                    yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -367,6 +408,7 @@ module SyntacticAnalysis =
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
+                    yield! findSkipAnalysis funcExpr
                     yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
 

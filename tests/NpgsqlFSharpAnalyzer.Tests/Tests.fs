@@ -95,6 +95,34 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Syntactic Analysis: skip analysis can be detected" {
+            match context (find "../examples/hashing/syntaxAnalysis-detectingSkipAnalysis.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlOperations context with
+                | [ operation ] ->
+                    operation.blocks
+                    |> List.exists (fun block -> block = SqlAnalyzerBlock.SkipAnalysis)
+                    |> fun found -> Expect.isTrue found "Skip analysis block found"
+                | _ ->
+                    failwith "Should not happen"
+        }
+
+        test "Semantic analysis: skip analysis doesn't give any errors" {
+            use db = createTestDatabase()
+            
+            match context (find "../examples/hashing/syntaxAnalysis-detectingSkipAnalysis.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    Expect.isEmpty messages "No errors returned"
+        }
+
         test "Semantic Analysis: parameter type mismatch" {
             use db = createTestDatabase()
 
@@ -303,6 +331,26 @@ let tests =
                         Expect.stringContains message.Message "Missing parameter 'active'"  "Error should say which parameter is not provided"
                     | _ ->
                         failwith "Expected only one error message"
+        }
+
+        test "SQL query semantic analysis: using dynamically referenced query doesn't give errors" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/syntaxAnalysisReferencingQueryDoesNotGiveError.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    Expect.isEmpty messages "There should be no errors"
         }
 
         test "SQL query semantic analysis: type mismatch" {

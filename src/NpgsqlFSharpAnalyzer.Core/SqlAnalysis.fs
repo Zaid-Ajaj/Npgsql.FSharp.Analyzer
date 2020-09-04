@@ -929,7 +929,12 @@ module SqlAnalysis =
     /// Uses database schema that is retrieved once during initialization
     /// and re-used when analyzing the rest of the Sql operation blocks
     let analyzeOperation (operation: SqlOperation) (connectionString: string) (schema: InformationSchema.DbSchemaLookups) =
-        match findQuery operation with
+        let skipAnalysis =
+            operation.blocks
+            |> List.exists (fun block -> block = SqlAnalyzerBlock.SkipAnalysis)
+
+        if skipAnalysis then [ ]
+        else match findQuery operation with
         | None ->
             [ ]
         | Some (query, queryRange) ->
