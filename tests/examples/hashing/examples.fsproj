@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="errorsInTransactions.fs" />
+    <Compile Include="syntaxAnalysis-usingTransactions.fs" />
     <Compile Include="syntaxAnalysis-detectingSkipAnalysis.fs" />
     <Compile Include="syntaxAnalysisReferencingQueryDoesNotGiveError.fs" />
     <Compile Include="updateQueryWithParametersInAssignments.fs" />

@@ -370,6 +370,15 @@ module SqlAnalysis =
         |> List.tryFind (function | SqlAnalyzerBlock.Query(query, range) -> true | _ -> false)
         |> Option.map(function | SqlAnalyzerBlock.Query(query, range) -> (query, range) | _ -> failwith "should not happen")
 
+    let findTransactions (operation: SqlOperation) =
+        operation.blocks
+        |> List.tryFind (function | SqlAnalyzerBlock.Transaction queries -> true | _ -> false)
+        |> Option.map(function
+            | SqlAnalyzerBlock.Transaction queries -> queries
+            | _ -> failwith "should not happen"
+        )
+
+
     let findParameters (operation: SqlOperation) =
         operation.blocks
         |> List.tryFind (function | SqlAnalyzerBlock.Parameters(parameters, range) -> true | _ -> false)
@@ -933,24 +942,39 @@ module SqlAnalysis =
             operation.blocks
             |> List.exists (fun block -> block = SqlAnalyzerBlock.SkipAnalysis)
 
-        if skipAnalysis then [ ]
-        else match findQuery operation with
-        | None ->
+        if skipAnalysis then
             [ ]
-        | Some (query, queryRange) ->
-            let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
-            match queryAnalysis with
-            | Result.Error queryError ->
-                [ createWarning queryError queryRange ]
-            | Result.Ok (parameters, outputColunms, errorMessage) ->
-                let potentialInsertQueryError =
-                    match errorMessage with
-                    | None -> [ ]
-                    | Some message -> [ createWarning message queryRange ]
+        else
+            match findQuery operation with
+            | None ->
+                match findTransactions operation with
+                | None -> [ ]
+                | Some transactionQueries ->
+                    let errors = ResizeArray<Message>()
+                    for transaction in transactionQueries do
+                        let query = transaction.query
+                        let queryRange = transaction.queryRange
+                        let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
+                        match queryAnalysis with
+                        | Result.Error queryError -> errors.Add(createWarning queryError queryRange)
+                        | _ -> ()
 
-                let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
-                [
-                    yield! potentialInsertQueryError
-                    yield! analyzeParameters operation parameters
-                    yield! analyzeColumnReadingAttempts readingAttempts outputColunms
-                ]
+                    Seq.toList errors
+
+            | Some (query, queryRange) ->
+                let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
+                match queryAnalysis with
+                | Result.Error queryError ->
+                    [ createWarning queryError queryRange ]
+                | Result.Ok (parameters, outputColunms, errorMessage) ->
+                    let potentialInsertQueryError =
+                        match errorMessage with
+                        | None -> [ ]
+                        | Some message -> [ createWarning message queryRange ]
+
+                    let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
+                    [
+                        yield! potentialInsertQueryError
+                        yield! analyzeParameters operation parameters
+                        yield! analyzeColumnReadingAttempts readingAttempts outputColunms
+                    ]

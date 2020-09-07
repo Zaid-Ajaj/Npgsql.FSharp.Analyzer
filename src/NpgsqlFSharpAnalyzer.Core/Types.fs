@@ -49,6 +49,11 @@ type UsedParameter = {
     applicationRange : range option
 }
 
+type TransactionQuery = {
+    query: string
+    queryRange : range
+}
+
 [<RequireQualifiedAccess>]
 type SqlAnalyzerBlock =
     | Query of string * range
@@ -56,6 +61,7 @@ type SqlAnalyzerBlock =
     | StoredProcedure of string * range
     | Parameters of UsedParameter list *  range
     | ReadingColumns of ColumnReadAttempt list
+    | Transaction of TransactionQuery list
     | SkipAnalysis 
 
 type SqlOperation = {

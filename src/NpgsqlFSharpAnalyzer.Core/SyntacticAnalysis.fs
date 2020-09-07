@@ -88,6 +88,33 @@ module SyntacticAnalysis =
         | _ ->
             None
 
+    let (|TransactionQuery|_|) = function
+        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(query, queryRange), constRange); secondItem ], commaRange, tupleRange) ->
+            Some { query = query; queryRange = queryRange }
+        | _ ->
+            None
+
+    let rec readTransactionQueries = function
+        | TransactionQuery transactionQuery ->
+            [ transactionQuery ]
+        | SynExpr.Sequential(_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
+            [
+                yield! readTransactionQueries expr1;
+                yield! readTransactionQueries expr2
+            ]
+        | _ ->
+            [ ]
+
+    let (|SqlExecuteTransaction|_|) = function
+        | Apply (("Sql.executeTransaction"|"Sql.executeTransactionAsync"), SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
+            match listExpr with
+            | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
+                Some (readTransactionQueries compExpr)
+            | _ ->
+                None
+        | _ ->
+            None
+
     let (|ReadColumnAttempt|_|) = function
         | Apply(funcName, SynExpr.Const(SynConst.String(columnName, queryRange), constRange), funcRange, appRange) ->
             if funcName.StartsWith "Sql.read" && funcName <> "Sql.readRow"
@@ -206,6 +233,20 @@ module SyntacticAnalysis =
 
         | _ ->
             [ ]
+
+    let rec findExecuteTransaction = function
+        | SqlExecuteTransaction transactionQueries ->
+            [ SqlAnalyzerBlock.Transaction transactionQueries ]
+
+        | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
+            [
+                yield! findExecuteTransaction funcExpr;
+                yield! findExecuteTransaction argExpr
+            ]
+
+        | _ ->
+            [ ]
+
 
     let rec findReadColumnAttempts = function
         | ReadColumnAttempt (attempt) ->
@@ -378,6 +419,17 @@ module SyntacticAnalysis =
                     yield! findQuery funcExpr
                     yield! findSkipAnalysis funcExpr
                     yield SqlAnalyzerBlock.Parameters(sqlParameters, range)
+                ]
+
+                [ { blocks = blocks; range = range; } ]
+
+            | SqlExecuteTransaction (transactionQueries) ->
+                let blocks = [
+                    yield! findFunc funcExpr
+                    yield! findQuery funcExpr
+                    yield! findParameters funcExpr
+                    yield! findSkipAnalysis funcExpr
+                    yield SqlAnalyzerBlock.Transaction transactionQueries
                 ]
 
                 [ { blocks = blocks; range = range; } ]

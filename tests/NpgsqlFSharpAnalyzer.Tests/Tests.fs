@@ -62,6 +62,14 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Syntactic Analysis: reading queries from transactions" {
+            match context (find "../examples/hashing/syntaxAnalysis-usingTransactions.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal operations.Length 2 "There should be two operations"
+        }
+
         test "Syntactic Analysis: simple queries can be read" {
             match context (find "../examples/hashing/syntacticAnalysisSimpleQuery.fs") with
             | None -> failwith "Could not crack project"
@@ -121,6 +129,23 @@ let tests =
                     let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
                     Expect.isEmpty messages "No errors returned"
+        }
+
+        test "Semantic analysis: incorrect queries in executeTranscation are detected" {
+            use db = createTestDatabase()
+            
+            match context (find "../examples/hashing/errorsInTransactions.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    Expect.equal 2 messages.Length "One error returned"
+                    Expect.isTrue (messages.[0].IsWarning()) "The error is found"
+                    Expect.isTrue (messages.[1].IsWarning()) "The error is found"
         }
 
         test "Semantic Analysis: parameter type mismatch" {
