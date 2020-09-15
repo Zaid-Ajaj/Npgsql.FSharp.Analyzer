@@ -116,6 +116,121 @@ let tests =
                     failwith "Should not happen"
         }
 
+        test "Syntactic Analysis: empty parameter sets can be analyzed" {
+            match context (find "../examples/hashing/detectingEmptyParameterSet.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlOperations context with
+                | [ operation ] ->
+                    let transactionQueries = 
+                        operation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | SqlAnalyzerBlock.Transaction queries -> Some queries
+                            | _ -> None)
+
+                    match transactionQueries with
+                    | None -> failwith "Expected transaction to be found"
+                    | Some [ ] -> failwith "Expected transaction to have one query"
+                    | Some (query :: _) ->
+                        Expect.equal 1 query.parameterSets.Length "There is one parameter set"
+                        Expect.isEmpty query.parameterSets.[0].parameters "There are no parameters provided"
+
+                | _ ->
+                    failwith "Should not happen"
+        }
+
+        test "Syntactic Analysis: detecting dynamic arrays" {
+            match context (find "../examples/hashing/detectingDynamicListsInTransactions.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlOperations context with
+                | [ operation; secondOperation ] ->
+                    let transactionQueries = 
+                        operation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | SqlAnalyzerBlock.Transaction queries -> Some queries
+                            | _ -> None)
+
+                    match transactionQueries with
+                    | None -> failwith "Expected transaction to be found"
+                    | Some [ ] -> failwith "Expected transaction to have one query"
+                    | Some (query :: _) ->
+                        Expect.equal 1 query.parameterSets.Length "There is one parameter set"
+                        Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
+
+                    let secondTransactionQueries = 
+                        secondOperation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | SqlAnalyzerBlock.Transaction queries -> Some queries
+                            | _ -> None)
+
+                    match secondTransactionQueries with
+                    | None -> failwith "Expected transaction to be found"
+                    | Some [ ] -> failwith "Expected transaction to have one query"
+                    | Some (query :: _) ->
+                        Expect.equal 1 query.parameterSets.Length "There is one parameter set"
+                        Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
+                | _ ->
+                    failwith "Should not happen"
+        }
+
+        test "Syntactic Analysis: detecting dynamic arrays and using query literals" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/usingLiteralQueriesWithTransactions.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SyntacticAnalysis.findSqlOperations context with
+                | [ operation; secondOperation ] ->
+
+                    let transactionQueries = 
+                        operation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | SqlAnalyzerBlock.Transaction queries -> Some queries
+                            | _ -> None)
+
+                    match transactionQueries with
+                    | None -> failwith "Expected transaction to be found"
+                    | Some [ ] -> failwith "Expected transaction to have one query"
+                    | Some (query :: _) ->
+                        Expect.equal 1 query.parameterSets.Length "There is one parameter set"
+                        Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
+
+                    let secondTransactionQueries = 
+                        secondOperation.blocks
+                        |> List.tryPick (fun block ->
+                            match block with
+                            | SqlAnalyzerBlock.Transaction queries -> Some queries
+                            | _ -> None)
+
+                    match secondTransactionQueries with
+                    | None -> failwith "Expected transaction to be found"
+                    | Some [ ] -> failwith "Expected transaction to have one query"
+                    | Some (query :: _) ->
+                        Expect.equal 1 query.parameterSets.Length "There is one parameter set"
+                        Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
+
+                    match SqlAnalysis.databaseSchema db.ConnectionString with
+                    | Result.Error connectionError ->
+                        failwith connectionError
+                    | Result.Ok schema ->
+                        let firstMessages = SqlAnalysis.analyzeOperation operation db.ConnectionString schema
+                        let secondMessages = SqlAnalysis.analyzeOperation secondOperation db.ConnectionString schema
+                        Expect.isEmpty firstMessages "No errors returned"
+                        Expect.isEmpty secondMessages "No errors returned"
+                | _ ->
+                    failwith "Should not happen"
+        }
+
         test "Semantic analysis: skip analysis doesn't give any errors" {
             use db = createTestDatabase()
             
@@ -133,7 +248,12 @@ let tests =
 
         test "Semantic analysis: incorrect queries in executeTranscation are detected" {
             use db = createTestDatabase()
-            
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
             match context (find "../examples/hashing/errorsInTransactions.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
@@ -143,9 +263,31 @@ let tests =
                 | Result.Ok schema ->
                     let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
                     let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
-                    Expect.equal 2 messages.Length "One error returned"
-                    Expect.isTrue (messages.[0].IsWarning()) "The error is found"
-                    Expect.isTrue (messages.[1].IsWarning()) "The error is found"
+                    Expect.equal 3 messages.Length "Three errors returned"
+        }
+
+        test "Semantic Analysis: empty parameter sets with missing parameters give error" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null, active bit not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/detectingEmptyParameterSet.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let block = List.exactlyOne (SyntacticAnalysis.findSqlOperations context)
+                    let messages = SqlAnalysis.analyzeOperation block db.ConnectionString schema
+                    match messages with
+                    | [ message ] ->
+                        Expect.isTrue (message.IsWarning()) "The message is an warning"
+                    | _ ->
+                        failwith "Expected only one error message"
         }
 
         test "Semantic Analysis: parameter type mismatch" {

@@ -5,6 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="usingLiteralQueriesWithTransactions.fs" />
+    <Compile Include="detectingDynamicListsInTransactions.fs" />
+    <Compile Include="detectingEmptyParameterSet.fs" />
     <Compile Include="errorsInTransactions.fs" />
     <Compile Include="syntaxAnalysis-usingTransactions.fs" />
     <Compile Include="syntaxAnalysis-detectingSkipAnalysis.fs" />

@@ -78,6 +78,12 @@ module SyntacticAnalysis =
         | _ ->
             [ ]
 
+    let rec flattenList = function
+        | SynExpr.Sequential(_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
+            [ yield! flattenList expr1; yield! flattenList expr2 ]
+        | expr ->
+            [ expr ]
+
     let (|SqlParameters|_|) = function
         | Apply ("Sql.parameters", SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) , funcRange, appRange) ->
             match listExpr with
@@ -88,9 +94,152 @@ module SyntacticAnalysis =
         | _ ->
             None
 
+    let readParameterSets parameterSetsExpr =
+        let sets = ResizeArray<ParameterSet>()
+        
+        match parameterSetsExpr with
+        | SynExpr.ArrayOrListOfSeqExpr(isArray, listExpr, listRange) ->
+            match listExpr with
+            | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, outerListExpr, outerListRange) ->
+                match outerListExpr with
+                | SynExpr.ForEach(_, _, _, _, enumExpr, bodyExpr, forEachRange) ->
+                    match bodyExpr with
+                    | SynExpr.YieldOrReturn(_, outputExpr, outputExprRange) ->
+                        match outputExpr with
+                        | SynExpr.ArrayOrListOfSeqExpr(isArray, parameterListExpr, parameterListRange) ->
+                            let parameterSet = {
+                                range = parameterListRange
+                                parameters = [ ]
+                            }
+
+                            match parameterListExpr with
+                            | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
+                                let parameters : UsedParameter list = [
+                                    for expr in flattenList compExpr do
+                                        match expr with
+                                        | ParameterTuple(name, range, func, funcRange, appRange) ->
+                                            {
+                                                paramFunc = func
+                                                paramFuncRange = funcRange
+                                                name = name.TrimStart '@'
+                                                range = range
+                                                applicationRange = appRange
+                                            }
+                                        | _ ->
+                                            ()
+                                ]
+
+                                sets.Add { parameterSet with parameters = parameters }
+
+                            | _ ->
+                                ()
+
+                        | SynExpr.ArrayOrList(isList, expressions, range) ->
+                            let parameters : UsedParameter list = [
+                                for expr in expressions do
+                                    match expr with
+                                    | ParameterTuple(name, range, func, funcRange, appRange) ->
+                                        {
+                                            paramFunc = func
+                                            paramFuncRange = funcRange
+                                            name = name.TrimStart '@'
+                                            range = range
+                                            applicationRange = appRange
+                                        }
+                                    | _ ->
+                                        ()
+                            ]
+
+                            sets.Add {
+                                range = range
+                                parameters = parameters
+                            }
+
+                        | _ ->
+                            ()
+                    | _ ->
+                        ()
+                | _ -> 
+                    let parameterSets = flattenList outerListExpr
+                
+                    for parameterSetExpr in parameterSets do
+                        match parameterSetExpr with
+                        | SynExpr.ArrayOrListOfSeqExpr(isArray, parameterListExpr, parameterListRange) ->
+                            let parameterSet = {
+                                range = parameterListRange
+                                parameters = [ ]
+                            }
+
+                            match parameterListExpr with
+                            | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
+                                let parameters : UsedParameter list = [
+                                    for expr in flattenList compExpr do
+                                        match expr with
+                                        | ParameterTuple(name, range, func, funcRange, appRange) ->
+                                            {
+                                                paramFunc = func
+                                                paramFuncRange = funcRange
+                                                name = name.TrimStart '@'
+                                                range = range
+                                                applicationRange = appRange
+                                            }
+                                        | _ ->
+                                            ()
+                                ]
+
+                                sets.Add { parameterSet with parameters = parameters }
+
+                            | _ ->
+                                ()
+
+                        | SynExpr.ArrayOrList(isList, expressions, range) ->
+                            let parameters : UsedParameter list = [
+                                for expr in expressions do
+                                    match expr with
+                                    | ParameterTuple(name, range, func, funcRange, appRange) ->
+                                        {
+                                            paramFunc = func
+                                            paramFuncRange = funcRange
+                                            name = name.TrimStart '@'
+                                            range = range
+                                            applicationRange = appRange
+                                        }
+                                    | _ ->
+                                        ()
+                            ]
+
+                            sets.Add {
+                                range = range
+                                parameters = parameters
+                            }
+
+                        | _ ->
+                            ()
+            | _ ->
+                ()
+
+        | _ -> ()
+
+        Seq.toList sets
+
     let (|TransactionQuery|_|) = function
-        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(query, queryRange), constRange); secondItem ], commaRange, tupleRange) ->
-            Some { query = query; queryRange = queryRange }
+        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(query, queryRange), constRange); parameterSetsExpr ], commaRange, tupleRange) ->
+            let transaction =  {
+                query = query;
+                queryRange = queryRange
+                parameterSets = readParameterSets parameterSetsExpr
+            }
+
+            Some transaction
+
+        | SynExpr.Tuple(isStruct, [ SynExpr.Ident value; parameterSetsExpr ], commaRange, tupleRange) ->
+            let transaction =  {
+                query = value.idText;
+                queryRange = value.idRange
+                parameterSets = readParameterSets parameterSetsExpr
+            }
+
+            Some transaction
         | _ ->
             None
 
@@ -384,7 +533,6 @@ module SyntacticAnalysis =
 
             | Apply(("Sql.execute"|"Sql.executeAsync"|"Sql.executeRow"|"Sql.executeRowAsync"|"Sql.iter"|"Sql.iterAsync"), lambdaExpr, funcRange, appRange) ->
                 let columns = findReadColumnAttempts lambdaExpr
-                let x = 1
                 let blocks = [
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
@@ -518,6 +666,18 @@ module SyntacticAnalysis =
                     match literals.TryFind identifier with
                     | Some literalQuery -> Some (SqlAnalyzerBlock.Query(literalQuery, range))
                     | None -> None
+
+                | SqlAnalyzerBlock.Transaction queries ->
+                    let modifiedQueries =
+                        queries
+                        |> List.map (fun transactionQuery ->
+                            match literals.TryFind transactionQuery.query with
+                            | Some literalQuery -> { transactionQuery with query = literalQuery }
+                            | None -> transactionQuery
+                        )
+
+                    Some (SqlAnalyzerBlock.Transaction modifiedQueries)
+
                 | differentBlock ->
                     Some differentBlock)
 
@@ -575,6 +735,7 @@ module SyntacticAnalysis =
 
                                 | SynModuleDecl.Types(definitions, range)  ->
                                     iterTypeDefs definitions
+
                                 | _ ->
                                     ()
 

@@ -389,8 +389,8 @@ module SqlAnalysis =
         |> List.tryFind (function | SqlAnalyzerBlock.ReadingColumns(attempts) -> true | _ -> false)
         |> Option.map(function | SqlAnalyzerBlock.ReadingColumns(attempts) -> attempts | _ -> failwith "should not happen")
 
-    let analyzeParameters (operation: SqlOperation) (requiredParameters: InformationSchema.Parameter list) =
-        match findParameters operation with
+    let analyzeParameters parameters parametersRange (requiredParameters: InformationSchema.Parameter list) =
+        match parameters with
         | None ->
             if not (List.isEmpty requiredParameters) then
                 let missingParameters =
@@ -398,29 +398,29 @@ module SqlAnalysis =
                     |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
                     |> String.concat ", "
                     |> sprintf "Missing parameters [%s]. Please use Sql.parameters to provide them."
-                [ createWarning missingParameters operation.range ]
+                [ createWarning missingParameters parametersRange ]
             else
                 [ ]
 
         | Some (queryParams, queryParamsRange) ->
             if List.isEmpty requiredParameters then
-                [ createWarning "Provided parameters are redundant. Sql query is not parameterized" operation.range ]
+                [ createWarning "Provided parameters are redundant. Sql query is not parameterized" parametersRange ]
             else
 
-                [
-                    /// None of the required parameters have the name of this provided parameter
-                    let isUnknown (parameter: UsedParameter) =
+                /// None of the required parameters have the name of this provided parameter
+                let isUnknown (parameter: UsedParameter) =
+                    requiredParameters
+                    |> List.forall (fun requiredParam -> parameter.name <> requiredParam.Name)
+
+                let isRedundant (parameter: UsedParameter) =
+                    // every required parameter has a corresponding provided query parameter
+                    let requirementSatisfied =
                         requiredParameters
-                        |> List.forall (fun requiredParam -> parameter.name <> requiredParam.Name)
+                        |> List.forall (fun requiredParam -> queryParams |> List.exists (fun queryParam -> queryParam.name = requiredParam.Name))
 
-                    let isRedundant (parameter: UsedParameter) =
-                        // every required parameter has a corresponding provided query parameter
-                        let requirementSatisfied =
-                            requiredParameters
-                            |> List.forall (fun requiredParam -> queryParams |> List.exists (fun queryParam -> queryParam.name = requiredParam.Name))
+                    requirementSatisfied && isUnknown parameter
 
-                        requirementSatisfied && isUnknown parameter
-
+                [
                     for requiredParameter in requiredParameters do
                         if not (queryParams |> List.exists (fun providedParam -> providedParam.name = requiredParameter.Name))
                         then
@@ -956,8 +956,29 @@ module SqlAnalysis =
                         let queryRange = transaction.queryRange
                         let queryAnalysis = extractParametersAndOutputColumns(connectionString, query, schema)
                         match queryAnalysis with
-                        | Result.Error queryError -> errors.Add(createWarning queryError queryRange)
-                        | _ -> ()
+                        | Result.Error queryError ->
+                            errors.Add(createWarning queryError queryRange)
+                        | Result.Ok (parameters, outputColunms, errorMessage) ->
+                            match errorMessage with
+                            | None -> ()
+                            | Some message -> errors.Add(createWarning message queryRange)
+
+                            if List.isEmpty transaction.parameterSets && not (List.isEmpty parameters) then
+                                errors.Add (createWarning "Transaction query is parameterized but the parameter sets are empty" transaction.queryRange)
+                            else
+                                for parameterSet in transaction.parameterSets do
+                                    let transactionParams = Some (parameterSet.parameters, parameterSet.range)
+                                    if not (List.isEmpty parameters) && List.isEmpty parameterSet.parameters then
+                                        let missingParameters =
+                                            parameters
+                                            |> List.map (fun p -> sprintf "%s:%s" p.Name p.DataType.Name)
+                                            |> String.concat ", "
+                                            |> sprintf "Missing parameters [%s] for this parameter set"
+
+                                        errors.Add(createWarning missingParameters parameterSet.range)
+                                    else 
+                                        for error in analyzeParameters transactionParams parameterSet.range parameters do
+                                            errors.Add(error)
 
                     Seq.toList errors
 
@@ -975,6 +996,6 @@ module SqlAnalysis =
                     let readingAttempts = defaultArg (findColumnReadAttempts operation) [ ]
                     [
                         yield! potentialInsertQueryError
-                        yield! analyzeParameters operation parameters
+                        yield! analyzeParameters (findParameters operation) operation.range parameters
                         yield! analyzeColumnReadingAttempts readingAttempts outputColunms
                     ]

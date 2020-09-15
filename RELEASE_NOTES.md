@@ -1,3 +1,7 @@
+### 3.15.0 - 2020-09-15
+* Analyze transaction parameter sets 
+* Allow for literal queries on transactions
+
 ### 3.14.0 - 2020-09-07
 * Analyze transaction queries
 

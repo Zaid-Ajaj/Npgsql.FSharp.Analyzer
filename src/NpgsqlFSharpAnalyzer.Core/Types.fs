@@ -49,9 +49,15 @@ type UsedParameter = {
     applicationRange : range option
 }
 
+type ParameterSet = {
+    parameters : UsedParameter list
+    range : range
+}
+
 type TransactionQuery = {
     query: string
     queryRange : range
+    parameterSets : ParameterSet list
 }
 
 [<RequireQualifiedAccess>]
