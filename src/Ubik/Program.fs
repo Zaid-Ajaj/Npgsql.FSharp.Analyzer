@@ -77,7 +77,10 @@ let analyzeFiles (fsharpFiles: FilePath[]) =
                     let messages = 
                         let connectionString = SqlAnalyzer.tryFindConnectionString context.FileName
                         if isNull connectionString || String.IsNullOrWhiteSpace connectionString then
-                            [ ]
+                            [
+                                for block in syntacticBlocks ->
+                                    SqlAnalysis.createWarning "Missing environment variable 'NPGSQL_FSHARP'. Please set that variable to the connection string of your development database or put the connection string in a file called 'NPGSQL_FSHARP' next to your project file or in your workspace root." block.range
+                            ]
                         else
                             match SqlAnalysis.databaseSchema connectionString with
                             | Result.Error connectionError ->

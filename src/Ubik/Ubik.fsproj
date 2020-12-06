@@ -7,8 +7,8 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.18.0</Version>
-    <PackageReleaseNotes>Initial release of Ubik</PackageReleaseNotes>
+    <Version>3.19.0</Version>
+    <PackageReleaseNotes>Provide a nice error message when there is no connection string file or environment variable</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
