@@ -641,6 +641,9 @@ module SyntacticAnalysis =
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
+        | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
+            visitSyntacticExpression body range
+
         | otherwise ->
             [ ]
 

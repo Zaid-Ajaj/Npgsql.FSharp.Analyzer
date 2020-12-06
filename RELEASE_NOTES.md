@@ -1,3 +1,6 @@
+### 3.18.0 - 2020-09-15
+* Analyze SQL blocks from within lambda expressions
+
 ### 3.17.0 - 2020-09-15
 * Support for datetimeOffset and datetimeOffsetOrNone when reading columns of type timestamptz
 
