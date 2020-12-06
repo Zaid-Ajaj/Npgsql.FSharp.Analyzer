@@ -1,3 +1,6 @@
+### 3.17.0 - 2020-09-15
+* Support for datetimeOffset and datetimeOffsetOrNone when reading columns of type timestamptz
+
 ### 3.16.0 - 2020-09-15
 * Analyze top level do expressions
 

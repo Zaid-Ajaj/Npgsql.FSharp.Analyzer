@@ -875,15 +875,15 @@ module SqlAnalysis =
                                 else ()
 
                             | ("timestamptz"|"timestamp with time zone") ->
-                                if column.Nullable && notUsing "timestamptzOrNone" && notUsing "dateTimeOrNone"
-                                then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
+                                if column.Nullable && notUsing "timestamptzOrNone" && notUsing "dateTimeOrNone" && notUsing "datetimeOffsetOrNone"
+                                then yield typeMismatch [ replace "datetimeOffsetOrNone"; replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
                                 //else if not column.Nullable && (using "timestamptzOrNone" || using "dateTimeOrNone")
                                 //then yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
-                                else if notUsing "timestamptzOrNone" && notUsing "timestamptz" && notUsing "dateTimeOrNone" && notUsing "dateTime"
+                                else if notUsing "timestamptzOrNone" && notUsing "timestamptz" && notUsing "dateTimeOrNone" && notUsing "dateTime" && notUsing "datetimeOffsetOrNone" && notUsing "datetimeOffset"
                                 then
                                     if column.Nullable
-                                    then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
-                                    else yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
+                                    then yield typeMismatch [ replace "datetimeOffsetOrNone"; replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
+                                    else yield typeMismatch [ replace "datetimeOffset"; replace "dateTime"; replace "timestamptz" ]
                                 else ()
 
                             | "bytea" ->

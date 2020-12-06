@@ -305,6 +305,8 @@ module SyntacticAnalysis =
                     ".dateOrNone"
                     ".dateTime"
                     ".dateTimeOrNone"
+                    ".datetimeOffset"
+                    ".datetimeOffsetOrNone"
                     ".intArray"
                     ".intArrayOrNone"
                     ".stringArray"
