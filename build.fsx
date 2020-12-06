@@ -315,6 +315,21 @@ let publishToNuget _ =
     if exitCode <> 0
     then failwith "Could not publish package"
 
+let packUbik _ =
+    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
+    let args =
+        [
+            "pack"
+            "--configuration Release"
+            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
+        ]
+
+    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "Ubik")
+    if exitCode <> 0 
+    then failwith "dotnet pack failed"
+
+Target.create "PackUbik" packUbik
+Target.create "PublishUbik" publishToNuget
 
 //-----------------------------------------------------------------------------
 // Target Declaration
@@ -351,6 +366,11 @@ Target.create "PackNoTests" dotnetPack
     ==> "DotnetPack"
     ==> "PublishToNuGet"
     ==> "Release"
+
+"DotnetBuild"
+==> "DotnetTest"
+==> "PackUbik"
+==> "PublishUbik"
 
 "DotnetRestore"
     ==> "WatchTests"

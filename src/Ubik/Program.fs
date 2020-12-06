@@ -1,13 +1,26 @@
 open System
 open System.IO
+open System.Linq
 open Npgsql.FSharp.Analyzers.Core
 open Spectre.Console
 open System.Xml
+open FSharp.Compiler.Text
+open FSharp.Data.LiteralProviders
 
 let resolveFile (path: string) =
     if Path.IsPathRooted path
     then path
     else Path.GetFullPath (Path.Combine(Environment.CurrentDirectory, path))
+
+type FilePath =
+    | File of path: string
+    | InvalidFile of fileName: string
+
+type CliArgs =
+    | Version
+    | InvalidArgs of error:string
+    | Project of projectPath:string
+    | Files of fsharpFiles: FilePath[]
 
 let getProject (args: string []) =
     try
@@ -15,43 +28,48 @@ let getProject (args: string []) =
         | [| |] ->
             Directory.GetFiles(Environment.CurrentDirectory, "*.fsproj")
             |> Array.tryHead
-            |> Option.map (fun projectPath -> resolveFile projectPath)
+            |> Option.map (fun projectPath -> Project(resolveFile projectPath))
+            |> function
+                | Some project -> project
+                | None ->
+                    Directory.GetFiles(Environment.CurrentDirectory, "*.fs")
+                    |> Array.map File
+                    |> Files
+
+        | [| "--version" |] -> Version
 
         | multipleArgs ->
-            let firstArg = multipleArgs.[0]
-            if firstArg.EndsWith(".fsproj") then
-                Some (resolveFile firstArg)
-            else
-                Directory.GetFiles(resolveFile firstArg, "*.fsproj")
+            if multipleArgs.Length = 1 && multipleArgs.[0].EndsWith ".fsproj" then
+                Project (resolveFile multipleArgs.[0])
+            else if Directory.Exists(resolveFile multipleArgs.[0]) then
+                Directory.GetFiles(resolveFile multipleArgs.[0], "*.fsproj")
                 |> Array.tryHead
-                |> Option.map (fun projectPath -> resolveFile projectPath)
+                |> Option.map (fun projectPath -> Project(resolveFile projectPath))
+                |> function
+                    | Some project -> project
+                    | None ->
+                        Directory.GetFiles(Environment.CurrentDirectory, "*.fs")
+                        |> Array.map File
+                        |> Files
+            else 
+                multipleArgs
+                |> Array.filter (fun file -> file.EndsWith ".fs")
+                |> Array.map (fun file -> try File (resolveFile file) with _ -> InvalidFile file)
+                |> Files
+
     with
-    | error -> None
+    | error -> InvalidArgs error.Message
 
-[<EntryPoint>]
-let main argv =
-    match getProject argv with
-    | None ->
-        printfn "No project file found in the current directory"
-        1
-
-    | Some project ->
-        AnsiConsole.MarkupLine("Analyzing [blue]{0}[/]", project)
-
-        let document = XmlDocument()
-        document.LoadXml(File.ReadAllText project)
-
-        let fsharpFileNodes = document.GetElementsByTagName("Compile")
-        let fsharpFiles = [
-            for item in 0 .. fsharpFileNodes.Count - 1 ->
-                let relativePath = fsharpFileNodes.[item].Attributes.["Include"].InnerText
-                let projectParent = Directory.GetParent project
-                Path.Combine(projectParent.FullName, relativePath)
-        ]
-
-        for file in fsharpFiles do
-            AnsiConsole.MarkupLine("Analyzing file [green]{0}[/]", file)
-            match Project.context file with
+let analyzeFiles (fsharpFiles: FilePath[]) =
+    let errorCount = ResizeArray()
+    for fsharpFile in fsharpFiles do
+        match fsharpFile with
+        | InvalidFile nonExistingFile ->
+            AnsiConsole.MarkupLine("Analyzing file did not exist [red]{0}[/]", nonExistingFile)
+            errorCount.Add(1)
+        | File fsharpFile -> 
+            AnsiConsole.MarkupLine("Analyzing file [green]{0}[/]", fsharpFile)
+            match Project.context fsharpFile with
             | None -> ()
             | Some context -> 
                 let syntacticBlocks = SyntacticAnalysis.findSqlOperations context
@@ -74,6 +92,93 @@ let main argv =
                                 |> List.distinctBy (fun message -> message.Range)
 
                     for message in messages do
-                        AnsiConsole.MarkupLine("Error [red]{0}[/]", message.Message)
 
+                        let range = message.Range
+                        let source = SourceText.ofString(File.ReadAllText fsharpFile)
+                        if range.StartLine = range.EndLine then
+                            let marker =
+                                source.GetLineString(range.StartLine - 1)
+                                |> Seq.mapi (fun index token ->
+                                    if index >= range.StartColumn && index < range.EndColumn
+                                    then "[orange1]^[/]"
+                                    else " "
+                                )
+                                |> String.concat ""
+
+                            let original =
+                                source.GetLineString(range.StartLine - 1)
+                                |> Seq.mapi (fun index token ->
+                                    if index >= range.StartColumn && index < range.EndColumn
+                                    then "[orange1]" + token.ToString().EscapeMarkup() + "[/]"
+                                    else token.ToString().EscapeMarkup()
+                                )
+                                |> String.concat ""
+
+                            let before = (range.StartLine - 1).ToString()
+                            let current = range.StartLine.ToString()
+                            let after = (range.StartLine + 1).ToString()
+
+                            let maxLength = List.max [ before.Length; current.Length; after.Length ]
+
+                            AnsiConsole.MarkupLine("   [blue]{0} |[/]", before.PadLeft(maxLength, ' '))
+                            AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", current.PadLeft(maxLength, ' '), original)
+                            AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", after.PadLeft(maxLength, ' '), marker)
+                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message)
+                            errorCount.Add(1)
+                        else
+                            let lines = [range.StartLine-1 .. range.EndLine+1]
+                            let maxLength =
+                                lines
+                                |> List.map (fun line -> line.ToString().Length)
+                                |> List.max
+
+                            for line in lines do
+                                if line = range.StartLine - 1 || line = range.EndLine + 1
+                                then AnsiConsole.MarkupLine("   [blue]{0} |[/] ", line.ToString().PadLeft(maxLength, ' '))
+                                else AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", line.ToString().PadLeft(maxLength, ' '), source.GetLineString(line - 1).EscapeMarkup())
+                             
+                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message)
+                            errorCount.Add(1)
+    let exitCode = errorCount.Sum()
+    Console.WriteLine()
+    if exitCode = 0
+    then AnsiConsole.MarkupLine("[green]No errors found[/]")
+    elif exitCode = 1
+    then AnsiConsole.MarkupLine("[orange1]Found 1 error[/]", exitCode)
+    else AnsiConsole.MarkupLine("[orange1]Found {0} errors[/]", exitCode)
+    exitCode
+
+let [<Literal>] projectFile = TextFile<"./Ubik.fsproj">.Text
+
+let projectVersion =
+    let doc = XmlDocument()
+    use content = new MemoryStream(Text.Encoding.UTF8.GetBytes projectFile)
+    doc.Load(content)
+    doc.GetElementsByTagName("Version").[0].InnerText
+
+[<EntryPoint>]
+let main argv =
+    match getProject argv with
+    | InvalidArgs error ->
+        AnsiConsole.MarkupLine("[red]{0}: {1}[/]", "Error occured while reading CLI arguments: ", error)
+        1
+
+    | Version ->
+        printfn "%s" projectVersion
         0
+
+    | Files files -> analyzeFiles files
+
+    | Project project ->
+        AnsiConsole.MarkupLine("Analyzing project [blue]{0}[/]", project)
+
+        let document = XmlDocument()
+        document.LoadXml(File.ReadAllText project)
+
+        let fsharpFileNodes = document.GetElementsByTagName("Compile")
+        analyzeFiles [|
+            for item in 0 .. fsharpFileNodes.Count - 1 ->
+                let relativePath = fsharpFileNodes.[item].Attributes.["Include"].InnerText
+                let projectParent = Directory.GetParent project
+                File(Path.Combine(projectParent.FullName, relativePath))
+        |]

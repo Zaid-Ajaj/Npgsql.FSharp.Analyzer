@@ -3,6 +3,12 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <ToolCommandName>ubik</ToolCommandName>
+    <PackAsTool>true</PackAsTool>
+    <IsPackable>true</IsPackable>
+    <RollForward>Major</RollForward>
+    <Version>3.18.0</Version>
+    <PackageReleaseNotes>Initial release of Ubik</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +23,7 @@
   <ItemGroup>
     <PackageReference Include="Spectre.Console" Version="0.32.1" />
     <PackageReference Update="FSharp.Core" Version="4.7.2" />
-
+    <PackageReference Include="FSharp.Data.LiteralProviders" Version="0.2.7" />
   </ItemGroup>
 
 </Project>
