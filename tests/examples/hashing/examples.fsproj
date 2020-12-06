@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="topLevelExpressionIsDetected.fs" />
     <Compile Include="usingLiteralQueriesWithTransactions.fs" />
     <Compile Include="detectingDynamicListsInTransactions.fs" />
     <Compile Include="detectingEmptyParameterSet.fs" />
@@ -35,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql.FSharp" Version="3.7.0" />
+    <PackageReference Include="Npgsql.FSharp" Version="3.12.2" />
   </ItemGroup>
 
 </Project>

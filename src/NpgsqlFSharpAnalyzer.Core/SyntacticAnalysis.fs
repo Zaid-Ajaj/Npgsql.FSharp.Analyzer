@@ -736,6 +736,8 @@ module SyntacticAnalysis =
                                 | SynModuleDecl.Types(definitions, range)  ->
                                     iterTypeDefs definitions
 
+                                | SynModuleDecl.DoExpr(debugInfo, expression, range) ->
+                                    operations.AddRange (visitSyntacticExpression expression range)
                                 | _ ->
                                     ()
 

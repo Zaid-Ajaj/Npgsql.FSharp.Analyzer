@@ -49,6 +49,14 @@ let tests =
                 Expect.isEmpty operations "There should be no syntactic blocks"
         }
 
+        test "Syntactic analysis: SQL block found from top-level expression in module" {
+            match context (find "../examples/hashing/topLevelExpressionIsDetected.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+        }
+
         test "Syntactic Analysis: reading queries with [<Literal>] query" {
             match context (find "../examples/hashing/syntacticAnalysis-literalStrings.fs") with
             | None -> failwith "Could not crack project"
