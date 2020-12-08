@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="castingNonNullableStaysNonNullable.fs" />
     <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
     <Compile Include="topLevelExpressionIsDetected.fs" />
     <Compile Include="usingLiteralQueriesWithTransactions.fs" />
