@@ -1,8 +1,9 @@
 source https://www.nuget.org/api/v2
 source https://api.nuget.org/v3/index.json
 storage: none
+lowest_matching: true
 clitool dotnet-mono 0.5.2
-nuget FSharp.Core
+nuget FSharp.Core ~> 4.7.2
 nuget Microsoft.SourceLink.GitHub prerelease copy_local: true
 nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
 nuget Expecto 8.13.1
