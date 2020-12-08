@@ -1,3 +1,6 @@
+### 3.21.0 - 2020-12-08
+* Detect queries within lambda expressions wrapped in single case unions
+
 ### 3.20.0 - 2020-12-08
 * Correctly retain selected column non-nullability when casted or aliased to another type
 

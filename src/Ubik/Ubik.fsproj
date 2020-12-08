@@ -7,8 +7,8 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.20.0</Version>
-    <PackageReleaseNotes>Correctly retain selected column non-nullability when casted or aliased to another type</PackageReleaseNotes>
+    <Version>3.21.0</Version>
+    <PackageReleaseNotes>Detect queries within lambda expressions wrapped in single case unions</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
