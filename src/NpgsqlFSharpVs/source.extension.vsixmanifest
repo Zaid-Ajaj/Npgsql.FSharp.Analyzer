@@ -3,7 +3,7 @@
     xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011"
     xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="FSharpLintVs.ef00bfc3-a899-45fc-aae8-afecf8673aaf" Version="3.20.0" Language="en-US" Publisher="Zaid Ajaj" />
+        <Identity Id="FSharpLintVs.ef00bfc3-a899-45fc-aae8-afecf8673aaf" Version="3.21.0" Language="en-US" Publisher="Zaid Ajaj" />
         <DisplayName>NpgsqlFSharpVs</DisplayName>
         <Description xml:space="preserve">F# Analyzer for embedded SQL syntax analysis, type-checking for parameters and result sets and nullable column detection when writing queries using Npgsql.FSharp.</Description>
         <MoreInfo>https://github.com/Zaid-Ajaj/Npgsql.FSharp.Analyzer</MoreInfo>
