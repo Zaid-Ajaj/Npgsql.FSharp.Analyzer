@@ -37,6 +37,14 @@ let findNumberOfUsers() =
     |> Sql.query "SELECT COUNT(*) as count FROM users"
     |> Sql.execute (fun read -> read.int64 "count")
 
+let findNumberOfUsersAfterCallingPrintExpressions () =
+    printfn "Non blocking expression"
+    printf "Non blocking expression"
+    Sql.host "localhost"
+    |> Sql.connectFromConfig
+    |> Sql.query "SELECT COUNT(*) as count FROM users"
+    |> Sql.execute (fun read -> read.int64 "count")
+
 let executeFunction() =
     Sql.host "localhost"
     |> Sql.connectFromConfig
