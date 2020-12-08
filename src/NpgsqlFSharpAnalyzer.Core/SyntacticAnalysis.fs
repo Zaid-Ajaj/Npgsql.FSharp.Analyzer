@@ -646,6 +646,12 @@ module SyntacticAnalysis =
         | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
             visitSyntacticExpression body range
 
+        | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
+            [
+                yield! visitSyntacticExpression expr1 range
+                yield! visitSyntacticExpression expr2 range
+            ]
+
         | otherwise ->
             [ ]
 
