@@ -7,6 +7,7 @@
   <ItemGroup>
     <Compile Include="castingNonNullableStaysNonNullable.fs" />
     <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
+    <Compile Include="syntacticAnalysisFromSingleCaseUnion.fs" />
     <Compile Include="topLevelExpressionIsDetected.fs" />
     <Compile Include="usingLiteralQueriesWithTransactions.fs" />
     <Compile Include="detectingDynamicListsInTransactions.fs" />

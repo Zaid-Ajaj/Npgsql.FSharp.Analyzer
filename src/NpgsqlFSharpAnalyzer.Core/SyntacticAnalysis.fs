@@ -615,6 +615,8 @@ module SyntacticAnalysis =
                 ]
 
                 [ { blocks = blocks; range = range; } ]
+            | SynExpr.Paren(innerExpr, leftRange, rightRange, range) ->
+                visitSyntacticExpression innerExpr range
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
