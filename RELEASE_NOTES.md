@@ -1,10 +1,13 @@
-### 3.18.0 - 2020-09-15
+### 3.20.0 - 2020-12-08
+* Correctly retain selected column non-nullability when casted or aliased to another type
+
+### 3.18.0 - 2020-12-06
 * Analyze SQL blocks from within lambda expressions
 
-### 3.17.0 - 2020-09-15
+### 3.17.0 - 2020-12-06
 * Support for datetimeOffset and datetimeOffsetOrNone when reading columns of type timestamptz
 
-### 3.16.0 - 2020-09-15
+### 3.16.0 - 2020-12-06
 * Analyze top level do expressions
 
 ### 3.15.0 - 2020-09-15

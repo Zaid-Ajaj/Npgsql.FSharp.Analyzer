@@ -255,6 +255,7 @@ let updateQuery =
 
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("AS", spaces, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
+opp.AddOperator(InfixOperator("as", spaces, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
 opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spaces, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))

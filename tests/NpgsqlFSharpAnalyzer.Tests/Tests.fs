@@ -262,6 +262,26 @@ let tests =
                     Expect.isEmpty messages "No errors returned"
         }
 
+        test "Semantic analysis: casting non-nullable columns stays non-nullable" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/castingNonNullableStaysNonNullable.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let blocks = SyntacticAnalysis.findSqlOperations context
+                    let messages = blocks |> List.collect (fun block -> SqlAnalysis.analyzeOperation block db.ConnectionString schema)
+                    Expect.isEmpty messages "No errors returned"
+        }
+
         test "Semantic analysis: incorrect queries in executeTranscation are detected" {
             use db = createTestDatabase()
 

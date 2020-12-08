@@ -4,20 +4,20 @@ open System.Reflection
 
 [<assembly: AssemblyTitleAttribute("NpgsqlFSharpAnalyzer")>]
 [<assembly: AssemblyProductAttribute("NpgsqlFSharpAnalyzer")>]
-[<assembly: AssemblyVersionAttribute("3.18.0")>]
-[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-09-15T00:00:00.0000000")>]
-[<assembly: AssemblyFileVersionAttribute("3.18.0")>]
-[<assembly: AssemblyInformationalVersionAttribute("3.18.0")>]
+[<assembly: AssemblyVersionAttribute("3.20.0")>]
+[<assembly: AssemblyMetadataAttribute("ReleaseDate","2020-12-08T00:00:00.0000000")>]
+[<assembly: AssemblyFileVersionAttribute("3.20.0")>]
+[<assembly: AssemblyInformationalVersionAttribute("3.20.0")>]
 [<assembly: AssemblyMetadataAttribute("ReleaseChannel","release")>]
-[<assembly: AssemblyMetadataAttribute("GitHash","8d5412fe3dd28abc45fb45a7d97134d09ec1ce82")>]
+[<assembly: AssemblyMetadataAttribute("GitHash","e06231910314439545a22bad74899e40a4c2e458")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "NpgsqlFSharpAnalyzer"
     let [<Literal>] AssemblyProduct = "NpgsqlFSharpAnalyzer"
-    let [<Literal>] AssemblyVersion = "3.18.0"
-    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-09-15T00:00:00.0000000"
-    let [<Literal>] AssemblyFileVersion = "3.18.0"
-    let [<Literal>] AssemblyInformationalVersion = "3.18.0"
+    let [<Literal>] AssemblyVersion = "3.20.0"
+    let [<Literal>] AssemblyMetadata_ReleaseDate = "2020-12-08T00:00:00.0000000"
+    let [<Literal>] AssemblyFileVersion = "3.20.0"
+    let [<Literal>] AssemblyInformationalVersion = "3.20.0"
     let [<Literal>] AssemblyMetadata_ReleaseChannel = "release"
-    let [<Literal>] AssemblyMetadata_GitHash = "8d5412fe3dd28abc45fb45a7d97134d09ec1ce82"
+    let [<Literal>] AssemblyMetadata_GitHash = "e06231910314439545a22bad74899e40a4c2e458"
