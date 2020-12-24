@@ -55,12 +55,19 @@ Another way to configure the connection string is by setting the value of an env
 
 The analyzer will try to locate and read the file first, then falls back to using the environment variable.
 
-### 2 - Install the analyzer using paket
+### 2 - Install the analyzer using
+
+#### a. paket
 Use paket to install the analyzer into a specialized `Analyzers` dependency group like this:
 ```
 paket add NpgsqlFSharpAnalyzer --group Analyzers
 ```
 **DO NOT** use `storage:none` because we want the analyzer package to be downloaded physically into `packages/analyzers` directory.
+
+#### b. nuget
+```
+nuget install NpgsqlFSharpAnalyzer -OutputDirectory packages/analyzers
+```
 
 ### 3 - Enable analyzers in Ionide
 Make sure you have these settings in Ionide for FSharp
