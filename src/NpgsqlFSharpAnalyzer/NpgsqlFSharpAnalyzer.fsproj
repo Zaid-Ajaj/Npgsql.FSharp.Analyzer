@@ -4,6 +4,7 @@
         <Name>NpgsqlFSharpAnalyzer</Name>
         <TargetFramework>netcoreapp2.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
         <Description>Advanced embedded static analysis and type-checking for SQL code from F#</Description>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
@@ -13,6 +14,9 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="SqlAnalyzer.fs" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="paket.references" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\NpgsqlFSharpAnalyzer.Core\NpgsqlFSharpAnalyzer.Core.fsproj" />

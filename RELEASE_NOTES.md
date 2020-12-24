@@ -1,3 +1,6 @@
+### 3.22.0 - 2020-12-08
+* Detect queries within sequential expressions or statements
+
 ### 3.21.0 - 2020-12-08
 * Detect queries within lambda expressions wrapped in single case unions
 
