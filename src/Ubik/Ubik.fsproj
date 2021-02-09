@@ -7,8 +7,8 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.22.0</Version>
-    <PackageReleaseNotes>Detect queries within sequential expressions or statements</PackageReleaseNotes>
+    <Version>3.22.1</Version>
+    <PackageReleaseNotes>Let the analyzer continue its work when it comes across enum types</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

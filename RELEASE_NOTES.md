@@ -1,3 +1,6 @@
+### 3.22.1 - 2021-02-09
+* Let the analyzer continue its work when it comes across enum types 
+
 ### 3.22.0 - 2020-12-08
 * Detect queries within sequential expressions or statements
 
