@@ -290,7 +290,7 @@ let tests =
                     Expect.isEmpty messages "No errors returned"
         }
 
-        test "Semantic analysis: incorrect queries in executeTranscation are detected" {
+        test "Semantic analysis: incorrect queries in executeTransaction are detected" {
             use db = createTestDatabase()
 
             Sql.connect db.ConnectionString
@@ -428,6 +428,33 @@ let tests =
                 Expect.equal rolesColumn.DataType.Name "text" "The data type is text"
                 Expect.isTrue rolesColumn.DataType.IsArray "The data type is an array"
                 Expect.isFalse rolesColumn.Nullable "The column is not nullable"
+        }
+
+        test "SQL schema analysis with user defined arrays" {
+            use db = createTestDatabase ()
+  
+            Sql.connect db.ConnectionString
+            |> Sql.executeTransaction [
+                "CREATE TYPE role AS ENUM ('admin')", []
+                "CREATE TABLE users (roles role[])", [] ]
+            |> raiseWhenFailed
+  
+            let databaseMetadata =
+                InformationSchema.getDbSchemaLookups db.ConnectionString
+  
+            let userColumns =
+                databaseMetadata.Schemas.["public"].Tables
+                |> Seq.tryFind (fun pair -> pair.Key.Name = "users")
+                |> Option.map (fun pair -> pair.Value)
+                |> Option.map List.ofSeq
+  
+            match userColumns with
+            | None -> failwith "Expected to find columns for users table"
+            | Some columns ->
+                Expect.equal 1 (List.length columns) "There is one column"
+                let rolesColumn = columns |> List.find (fun column -> column.Name = "roles")
+                Expect.equal rolesColumn.DataType.Name "role" "The data type is role"
+                Expect.isTrue rolesColumn.DataType.IsArray "The data type is an array"
         }
 
         test "SQL query analysis" {
