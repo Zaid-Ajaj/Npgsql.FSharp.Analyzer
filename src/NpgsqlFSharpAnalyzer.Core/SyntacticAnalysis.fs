@@ -513,6 +513,8 @@ module SyntacticAnalysis =
         match expr with
         | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
             visitSyntacticExpression innerExpr range
+        | SynExpr.Typed(innerExpr, returnType, range) ->
+            visitSyntacticExpression innerExpr range
         | SynExpr.YieldOrReturn(_, innerExpr, innerRange) ->
             visitSyntacticExpression innerExpr innerRange
         | SynExpr.YieldOrReturnFrom(_, innerExpr, innerRange) ->

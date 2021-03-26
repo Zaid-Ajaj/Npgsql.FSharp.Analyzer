@@ -38,7 +38,7 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlOperations context
-                Expect.equal 11 (List.length operationBlocks) "Found 11 operation blocks"
+                Expect.equal (List.length operationBlocks) 12 "Found 12 operation blocks"
         }
 
         test "Syntactic analysis: no SQL blocks should be found using sprintf" {

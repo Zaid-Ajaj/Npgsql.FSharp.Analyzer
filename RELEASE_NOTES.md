@@ -1,3 +1,6 @@
+### 3.23.0 - 2021-03-26
+* Detect typed let bindings 
+
 ### 3.22.1 - 2021-02-09
 * Let the analyzer continue its work when it comes across enum types 
 

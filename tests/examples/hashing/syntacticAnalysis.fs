@@ -92,6 +92,12 @@ module InsidePostgres =
         |> Sql.query "SELECT COUNT(*) as count FROM users"
         |> Sql.execute (fun read -> read.int64 "count")
 
+    let nextedDeclaretionWithExplicitReturnType() : Result<int64 list, exn>= 
+        Sql.host "localhost"
+        |> Sql.connectFromConfig
+        |> Sql.query "SELECT COUNT(*) as count FROM users"
+        |> Sql.execute (fun read -> read.int64 "count")
+
     type NestedWhatever() =
         member this.Hello =
             let whateverSql() = 

@@ -7,8 +7,8 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.22.1</Version>
-    <PackageReleaseNotes>Let the analyzer continue its work when it comes across enum types</PackageReleaseNotes>
+    <Version>3.23.0</Version>
+    <PackageReleaseNotes>Detect typed let bindings</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
