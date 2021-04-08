@@ -38,7 +38,7 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlOperations context
-                Expect.equal (List.length operationBlocks) 12 "Found 12 operation blocks"
+                Expect.equal (List.length operationBlocks) 15 "Found 15 operation blocks"
         }
 
         test "Syntactic analysis: no SQL blocks should be found using sprintf" {
@@ -47,6 +47,26 @@ let tests =
             | Some context ->
                 let operations = SyntacticAnalysis.findSqlOperations context
                 Expect.isEmpty operations "There should be no syntactic blocks"
+        }
+
+        test "Syntactic Analysis: finding processed parameters" {
+            match context (find "../examples/hashing/usingProcessedParameters.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operationBlocks = SyntacticAnalysis.findSqlOperations context
+                Expect.equal (List.length operationBlocks) 1 "Found 1 operation"
+                let parameters = 
+                    [
+                        for operation in operationBlocks do
+                        for block in operation.blocks do
+                            match block with
+                            | SqlAnalyzerBlock.Parameters (parameters, _) ->
+                                yield! parameters
+                            | _ ->
+                                ()
+                    ]
+
+                Expect.equal 2 parameters.Length "There are 2 parameters"
         }
 
         test "Syntactic analysis: SQL block found from top-level expression in module" {

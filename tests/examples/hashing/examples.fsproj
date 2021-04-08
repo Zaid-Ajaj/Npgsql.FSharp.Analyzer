@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="usingProcessedParameters.fs" />
     <Compile Include="castingNonNullableStaysNonNullable.fs" />
     <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
     <Compile Include="syntacticAnalysisFromSingleCaseUnion.fs" />
@@ -39,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql.FSharp" Version="3.12.2" />
+    <PackageReference Include="Npgsql.FSharp" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

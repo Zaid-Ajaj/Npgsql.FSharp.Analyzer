@@ -1,7 +1,6 @@
 module parameterTypeMismatch
 
 open Npgsql.FSharp
-open Npgsql.FSharp.OptionWorkflow
 
 let connectionString = "Dummy connection string"
  

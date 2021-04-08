@@ -1,3 +1,6 @@
+### 3.24.0 - 2021-04-09
+* fixes dynamically applied parameters with more complex expressions 
+
 ### 3.23.0 - 2021-03-26
 * Detect typed let bindings 
 

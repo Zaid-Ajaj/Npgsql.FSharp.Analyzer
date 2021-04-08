@@ -10,7 +10,7 @@ let executeMultipleQueries =
             [ "@user_id", Sql.int 42 ]
             [ "@user_id", Sql.int 43 ]
             [ "@user_id", Sql.int 44 ]
-            [ "@user_id", Sql.int 44 ]
+            [ "@user_id", (Sql.int 44) ]
         ]
 
         "DELETE FROM users", [ ]

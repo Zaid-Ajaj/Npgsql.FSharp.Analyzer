@@ -1,7 +1,14 @@
 module Postgres
 
 open Npgsql.FSharp
-open Npgsql.FSharp.OptionWorkflow
+
+type OptionBuilder() =
+    member x.Bind(v,f) = Option.bind f v
+    member x.Return v = Some v
+    member x.ReturnFrom o = o
+    member x.Zero () = None
+
+let option = OptionBuilder()
 
 let connectionString = "Dummy connection string"
 
@@ -51,6 +58,25 @@ let executeFunction() =
     |> Sql.func "getNumberOfUsers"
     |> Sql.execute (fun read -> read.text "username")
 
+let executeFunctionAsync() =
+    Sql.host "localhost"
+    |> Sql.connectFromConfig
+    |> Sql.func "getNumberOfUsers"
+    |> Sql.executeAsync (fun read -> read.text "username")
+    |> Async.AwaitTask
+
+let executeTransactionAsync() =
+    Sql.host "localhost"
+    |> Sql.connectFromConfig
+    |> Sql.executeTransactionAsync [ "SOME QUERY", [ [ "@someNumber", Sql.int 42 ] ] ]
+    |> Async.AwaitTask
+
+let executeTransactionWithEmptyList() =
+    Sql.host "localhost"
+    |> Sql.connectFromConfig
+    |> Sql.executeTransactionAsync [ ]
+    |> Async.AwaitTask
+
 type Whatever() =
     member this.Hello =
         let whateverSql() = 
@@ -69,17 +95,21 @@ let doCoolStuff() = async {
 }
 
 let doCoolStuffAsync() = async {
-    return! Sql.host "localhost"
-           |> Sql.connectFromConfig
-           |> Sql.query "SELECT COUNT(*) as count FROM users"
-           |> Sql.executeAsync (fun read -> read.int64 "count")
+    let value =
+        Sql.host "localhost"
+        |> Sql.connectFromConfig
+        |> Sql.query "SELECT COUNT(*) as count FROM users"
+        |> Sql.executeAsync (fun read -> read.int64 "count")
+
+    return 1
 }
 
 let doCoolStuffAsyncWithLet() = async {
-    let! x =  Sql.host "localhost"
-           |> Sql.connectFromConfig
-           |> Sql.query "SELECT COUNT(*) as count FROM users"
-           |> Sql.executeAsync (fun read -> read.int64 "count")
+    let x =
+        Sql.host "localhost"
+        |> Sql.connectFromConfig
+        |> Sql.query "SELECT COUNT(*) as count FROM users"
+        |> Sql.executeAsync (fun read -> read.int64 "count")
 
     return x; 
 }
@@ -92,7 +122,7 @@ module InsidePostgres =
         |> Sql.query "SELECT COUNT(*) as count FROM users"
         |> Sql.execute (fun read -> read.int64 "count")
 
-    let nextedDeclaretionWithExplicitReturnType() : Result<int64 list, exn>= 
+    let nextedDeclaretionWithExplicitReturnType() : int64 list = 
         Sql.host "localhost"
         |> Sql.connectFromConfig
         |> Sql.query "SELECT COUNT(*) as count FROM users"

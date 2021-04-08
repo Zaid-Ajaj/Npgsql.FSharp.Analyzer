@@ -1,6 +1,6 @@
 module castingNonNullableStaysNonNullable
 
-open Npgsql.FSharp.Tasks
+open Npgsql.FSharp
 
 let userIds connection =
     connection

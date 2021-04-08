@@ -2,7 +2,7 @@ module SyntacticAnalysisFromSingleCaseUnion
 
 open Npgsql.FSharp
 
-type SqlAction = SqlAction of (string -> Result<int list, exn>)
+type SqlAction = SqlAction of (string -> int list)
 
 let getData =
     SqlAction (fun (connectionString: string) -> 
