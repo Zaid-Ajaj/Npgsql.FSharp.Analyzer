@@ -427,4 +427,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Offset = Some (Expr.Integer 100)
     }
+    testSelect """
+        SELECT *
+        FROM (SELECT NOW()) AS time
+        LIMIT 1
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1)
+    }
 ]

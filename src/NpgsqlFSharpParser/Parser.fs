@@ -1,5 +1,7 @@
 [<RequireQualifiedAccess>]
-module NpgsqlFSharpParser.Parser
+module rec NpgsqlFSharpParser.Parser
+
+#nowarn "40" // Recursive objects
 
 open FParsec
 open System
@@ -244,10 +246,22 @@ let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
 let optionalFrom =
     optionalExpr (
         attempt (
+            text "FROM " >>. (parens selectQuery) >>= fun subQuery ->
+            optional (text "AS") >>= fun _ ->
+            simpleIdentifier >>= fun alias ->
+            preturn (Expr.As(subQuery, Expr.Ident alias))
+        )
+        <|>
+        attempt (
             text "FROM " >>. simpleIdentifier >>= fun table ->
             optional (text "AS") >>= fun _ ->
             simpleIdentifier >>= fun alias ->
             preturn (Expr.As(Expr.Ident table, Expr.Ident alias))
+        )
+        <|>
+        attempt (
+            text "FROM" >>. (parens selectQuery) >>= fun subQuery ->
+            preturn subQuery
         )
         <|>
         attempt (
