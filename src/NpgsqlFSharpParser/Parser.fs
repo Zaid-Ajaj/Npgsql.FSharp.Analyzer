@@ -245,7 +245,7 @@ let optionalFrom =
     optionalExpr (
         attempt (
             text "FROM " >>. simpleIdentifier >>= fun table ->
-            text "AS" >>= fun _ ->
+            optional (text "AS") >>= fun _ ->
             simpleIdentifier >>= fun alias ->
             preturn (Expr.As(Expr.Ident table, Expr.Ident alias))
         )

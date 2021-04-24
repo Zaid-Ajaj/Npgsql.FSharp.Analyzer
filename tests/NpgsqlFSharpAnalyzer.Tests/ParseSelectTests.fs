@@ -124,6 +124,12 @@ let selectQueryTests = testList "Parse SELECT tests" [
             From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
     }
 
+    testSelect "SELECT COUNT(*) AS user_count FROM users u" {
+        SelectExpr.Default with
+            Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
+    }
+
     testSelect "SELECT COUNT(*) FROM users LIMIT 10" {
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
