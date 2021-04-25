@@ -69,37 +69,43 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect "SELECT username, user_id FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
+    }
+
+    testSelect """SELECT * FROM "from" """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.Ident "from")
     }
 
     testSelect "SELECT * FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Star]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT DISTINCT username, user_id FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT DISTINCT ON (username, user_id) FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT COUNT(*) FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT COUNT(*) AS user_count FROM users" {
         SelectExpr.Default with
             Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT ename || empno AS EmpDetails, COALESCE(comm,0) AS TOTALSAL FROM sales" {
@@ -115,7 +121,13 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect "SELECT COUNT(*) AS user_count FROM users as u" {
         SelectExpr.Default with
             Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
-            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u")) 
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
+    }
+
+    testSelect "SELECT COUNT(*) AS user_count FROM users u" {
+        SelectExpr.Default with
+            Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT 10" {
@@ -414,5 +426,18 @@ let selectQueryTests = testList "Parse SELECT tests" [
             Limit = Some (Expr.Integer 20)
 
             Offset = Some (Expr.Integer 100)
+    }
+    testSelect """
+        SELECT *
+        FROM (SELECT NOW()) AS time
+        LIMIT 1
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1)
     }
 ]

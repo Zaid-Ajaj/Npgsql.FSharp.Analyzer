@@ -1,19 +1,111 @@
 [<RequireQualifiedAccess>]
-module NpgsqlFSharpParser.Parser
+module rec NpgsqlFSharpParser.Parser
+
+#nowarn "40" // Recursive objects
 
 open FParsec
 open System
+/// https://www.postgresql.org/docs/13/sql-keywords-appendix.html
+let reserved = [
+    "ALL"
+    "ANALYSE"
+    "ANALYZE"
+    "AND"
+    "ANY"
+    "ARRAY"
+    "AS"
+    "ASC"
+    "ASYMMETRIC"
+    "BOTH"
+    "CASE"
+    "CAST"
+    "CHECK"
+    "COLLATE"
+    "COLUMN"
+    "CONSTRAINT"
+    "CREATE"
+    "DEFAULT"
+    "DESC"
+    "DISTINCT"
+    "DO"
+    "ELSE"
+    "END"
+    "FALSE"
+    "FOR"
+    "FOREIGN"
+    "FROM"
+    "GROUP"
+    "HAVING"
+    "IN"
+    "INNER"
+    "INTERSECT"
+    "INTO"
+    "IS"
+    "ISNULL"
+    "JOIN"
+    "LEADING"
+    "LEFT"
+    "LIMIT"
+    "LOCALTIME"
+    "LOCALTIMESTAMP"
+    "NEW"
+    "NOT"
+    "NULL"
+    "OFF"
+    "OFFSET"
+    "OLD"
+    "ON"
+    "ONLY"
+    "OR"
+    "ORDER"
+    "OUTER"
+    "OVERLAPS"
+    "PLACING"
+    "PRIMARY"
+    "REFERENCES"
+    "RIGHT"
+    "SELECT"
+    "SOME"
+    "SYMMETRIC"
+    "TABLE"
+    "THEN"
+    "TO"
+    "TRUE"
+    "UNION"
+    "UNIQUE"
+    "USER"
+    "USING"
+    "WHEN"
+    "WHERE"
+]
 
-let simpleIdentifier : Parser<string, unit> =
+// Applies popen, then pchar repeatedly until pclose succeeds,
+// returns the string in the middle
+let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
+
+// Parses any string between popen and pclose
+let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
+
+// Cannot be a reserved keyword.
+let stringIdentifier : Parser<string, unit> =
     let isIdentifierFirstChar token = isLetter token
     let isIdentifierChar token = isLetter token || isDigit token || token = '.' || token = '_'
     many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier" .>> spaces
+    >>= fun identifier ->
+    if List.contains (identifier.ToUpper()) reserved
+    then fail (sprintf "Identifier %s is a reserved keyword" identifier)
+    else preturn identifier
+
+// Can be a reserved keyword.
+let quotedIdentifier : Parser<string, unit> =
+    (skipChar '\"' |> anyStringBetween <| skipChar '\"')
+
+let simpleIdentifier =
+    quotedIdentifier
+    <|> stringIdentifier
 
 let identifier : Parser<Expr, unit> =
-    let isIdentifierFirstChar token = isLetter token
-    let isIdentifierChar token = isLetter token || isDigit token || token = '.' || token = '_'
-    many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier" .>> spaces
-    |>> Expr.Ident
+    simpleIdentifier |>> Expr.Ident
 
 let parameter : Parser<Expr, unit> =
     let isIdentifierFirstChar token = token = '@'
@@ -47,16 +139,9 @@ let boolean : Parser<Expr, unit> =
     (text "true" |>> fun _ -> Expr.Boolean true)
     <|> (text "false" |>> fun _ -> Expr.Boolean false)
 
-// Applies popen, then pchar repeatedly until pclose succeeds,
-// returns the string in the middle
-let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
-
-// Parses any string between popen and pclose
-let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
-
 // Parses any string between double quotes
 let quotedString =
-    (attempt (pstring "''") |>> fun _ -> String.Empty) 
+    (attempt (pstring "''") |>> fun _ -> String.Empty)
     <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
@@ -67,7 +152,7 @@ let commaSeparatedExprs = sepBy expr comma
 
 let selections =
     (star |>> List.singleton)
-    <|> (attempt commaSeparatedExprs) 
+    <|> (attempt commaSeparatedExprs)
     <|> (attempt (parens commaSeparatedExprs))
 
 let functionExpr =
@@ -78,7 +163,7 @@ let functionExpr =
     (parens commaSeparatedExprs)
     |>> fun arguments -> Expr.Function(functionName, arguments)
 
-let innerJoin = 
+let innerJoin =
     (attempt (text "INNER JOIN") <|> attempt (text "JOIN")) >>. simpleIdentifier .>> text "ON" >>= fun tableName ->
     expr |>> fun expr -> JoinExpr.InnerJoin(tableName, expr)
 
@@ -123,7 +208,7 @@ let orderByDescNullsFirst =
     parser |>> fun columnName -> Ordering.DescNullsFirst columnName
 
 let orderByDescNullsLast =
-    let parser = attempt (simpleIdentifier .>> text "DESC NULLS LAST") 
+    let parser = attempt (simpleIdentifier .>> text "DESC NULLS LAST")
     parser |>> fun columnName -> Ordering.DescNullsLast columnName
 
 let orderingExpr =
@@ -161,10 +246,22 @@ let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
 let optionalFrom =
     optionalExpr (
         attempt (
+            text "FROM " >>. (parens selectQuery) >>= fun subQuery ->
+            optional (text "AS") >>= fun _ ->
+            simpleIdentifier >>= fun alias ->
+            preturn (Expr.As(subQuery, Expr.Ident alias))
+        )
+        <|>
+        attempt (
             text "FROM " >>. simpleIdentifier >>= fun table ->
-            text "AS" >>= fun _ ->
+            optional (text "AS") >>= fun _ ->
             simpleIdentifier >>= fun alias ->
             preturn (Expr.As(Expr.Ident table, Expr.Ident alias))
+        )
+        <|>
+        attempt (
+            text "FROM" >>. (parens selectQuery) >>= fun subQuery ->
+            preturn subQuery
         )
         <|>
         attempt (
@@ -184,16 +281,16 @@ let optionalGroupBy =
 
 let selectQuery =
     text "SELECT" >>= fun _ ->
-    optionalDistinct >>= fun _ -> 
+    optionalDistinct >>= fun _ ->
     selections >>= fun selections ->
     optionalFrom >>= fun tableName ->
-    joinExpr >>= fun joinExprs -> 
+    joinExpr >>= fun joinExprs ->
     optionalWhereClause >>= fun whereExpr ->
     optionalGroupBy >>= fun groupByExpr ->
     optionalHavingClause >>= fun havingExpr ->
     optionalOrderingExpr >>= fun orderingExprs ->
     optionalLimit >>= fun limitExpr ->
-    optionalOffset >>= fun offsetExpr -> 
+    optionalOffset >>= fun offsetExpr ->
         let query =
             { SelectExpr.Default with
                 Columns = selections
@@ -228,7 +325,7 @@ let insertQuery =
     (parens (sepBy1 expr comma)) >>= fun values ->
     optionalRetuningExpr >>= fun returningExpr ->
         let query = {
-            InsertExpr.Default with 
+            InsertExpr.Default with
                 Table = tableName
                 Columns = columns
                 Values = values
@@ -250,7 +347,7 @@ let updateQuery =
                 Returning = returningExpr
                 Assignments = assignments
         }
-        
+
         preturn (Expr.UpdateQuery query)
 
 opp.AddOperator(InfixOperator("AND", spaces, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
@@ -289,7 +386,7 @@ opp.TermParser <- choice [
 
 let fullParser = (optional spaces) >>. expr .>> (optional spaces <|> (text ";" |>> fun _ -> ()))
 
-let parse (input: string) : Result<Expr, string> = 
+let parse (input: string) : Result<Expr, string> =
     match run fullParser input with
     | Success(result,_,_) -> Result.Ok result
     | Failure(errMsg,_,_) -> Result.Error errMsg
