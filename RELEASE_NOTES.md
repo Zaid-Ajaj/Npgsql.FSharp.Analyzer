@@ -1,3 +1,6 @@
+### 3.25.0 - 2021-04-26
+* Improvements to the SQL parser 
+
 ### 3.24.0 - 2021-04-09
 * fixes dynamically applied parameters with more complex expressions 
 

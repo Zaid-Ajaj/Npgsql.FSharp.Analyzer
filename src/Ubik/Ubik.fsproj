@@ -7,7 +7,7 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.24.0</Version>
+    <Version>3.25.0</Version>
     <PackageReleaseNotes>Fixes complex applied expressions to the </PackageReleaseNotes>
   </PropertyGroup>
 
