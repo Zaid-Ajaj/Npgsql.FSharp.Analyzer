@@ -427,6 +427,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Offset = Some (Expr.Integer 100)
     }
+
     testSelect """
         SELECT *
         FROM (SELECT NOW()) AS time
@@ -440,4 +441,44 @@ let selectQueryTests = testList "Parse SELECT tests" [
             }, Expr.Ident "time"))
             Limit = Some (Expr.Integer 1)
     }
+
+    testSelect """
+        SELECT "username" FROM "users"
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"]
+            From = Expr.Ident "users" |> Some
+        }
+
+    testSelect """
+        SELECT "username" as "name" FROM "users"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.As(Expr.Ident "username", Expr.Ident "name") ]
+            From = Expr.Ident "users" |> Some
+        }
+
+    testSelect """
+        SELECT "$Table"."timestamp" FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("$Table.timestamp") ]
+            From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT "$Table".timestamp as ts FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.As(Expr.Ident("$Table.timestamp"), Expr.Ident("ts")) ]
+            From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.Ident "$Table" |> Some
+        }
 ]

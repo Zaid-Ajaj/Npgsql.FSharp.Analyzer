@@ -87,9 +87,10 @@ let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
 let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
 
 // Cannot be a reserved keyword.
-let stringIdentifier : Parser<string, unit> =
+let unquotedIdentifier : Parser<string, unit> =
     let isIdentifierFirstChar token = isLetter token
-    let isIdentifierChar token = isLetter token || isDigit token || token = '.' || token = '_'
+    let isIdentifierChar token = isLetter token || isDigit token || token = '_'
+
     many1Satisfy2L isIdentifierFirstChar isIdentifierChar "identifier" .>> spaces
     >>= fun identifier ->
     if List.contains (identifier.ToUpper()) reserved
@@ -98,11 +99,25 @@ let stringIdentifier : Parser<string, unit> =
 
 // Can be a reserved keyword.
 let quotedIdentifier : Parser<string, unit> =
-    (skipChar '\"' |> anyStringBetween <| skipChar '\"')
+    (skipChar '\"' |> anyStringBetween <| skipChar '\"') .>> spaces
+
+let stringIdentifier =
+    quotedIdentifier
+    <|> unquotedIdentifier
 
 let simpleIdentifier =
-    quotedIdentifier
-    <|> stringIdentifier
+    attempt(
+        stringIdentifier >>= fun schema ->
+        text "." >>. stringIdentifier >>= fun table ->
+        text "." >>. stringIdentifier .>> spaces >>= fun column ->
+        preturn (sprintf "%s.%s.%s" schema table column))
+    <|>
+    attempt(
+        stringIdentifier >>= fun table ->
+        text "." >>. stringIdentifier .>> spaces >>= fun column ->
+        preturn (sprintf "%s.%s" table column))
+    <|>
+    stringIdentifier
 
 let identifier : Parser<Expr, unit> =
     simpleIdentifier |>> Expr.Ident
