@@ -443,6 +443,21 @@ let selectQueryTests = testList "Parse SELECT tests" [
     }
 
     testSelect """
+        SELECT *
+        FROM
+        (SELECT NOW()) time
+        LIMIT 1
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1)
+    }
+
+    testSelect """
         SELECT "username" FROM "users"
     """ {
         SelectExpr.Default with
@@ -451,7 +466,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         }
 
     testSelect """
-        SELECT "username" as "name" FROM "users"
+        SELECT "username" AS "name" FROM "users"
     """ {
         SelectExpr.Default with
             Columns = [ Expr.As(Expr.Ident "username", Expr.Ident "name") ]
@@ -467,7 +482,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         }
 
     testSelect """
-        SELECT "$Table".timestamp as ts FROM "$Table"
+        SELECT "$Table".timestamp AS ts FROM "$Table"
     """ {
         SelectExpr.Default with
             Columns = [ Expr.As(Expr.Ident("$Table.timestamp"), Expr.Ident("ts")) ]
@@ -480,5 +495,22 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [ Expr.Ident("public.$Table.timestamp") ]
             From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table" AS tbl
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table" tbl LIMIT 100
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
+            Limit = Some (Expr.Integer 100)
         }
 ]

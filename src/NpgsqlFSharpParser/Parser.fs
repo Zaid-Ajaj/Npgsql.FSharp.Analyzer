@@ -109,15 +109,15 @@ let simpleIdentifier =
     attempt(
         stringIdentifier >>= fun schema ->
         text "." >>. stringIdentifier >>= fun table ->
-        text "." >>. stringIdentifier .>> spaces >>= fun column ->
+        text "." >>. stringIdentifier >>= fun column ->
         preturn (sprintf "%s.%s.%s" schema table column))
     <|>
     attempt(
         stringIdentifier >>= fun table ->
-        text "." >>. stringIdentifier .>> spaces >>= fun column ->
+        text "." >>. stringIdentifier >>= fun column ->
         preturn (sprintf "%s.%s" table column))
     <|>
-    stringIdentifier
+    attempt stringIdentifier
 
 let identifier : Parser<Expr, unit> =
     simpleIdentifier |>> Expr.Ident
@@ -261,14 +261,14 @@ let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
 let optionalFrom =
     optionalExpr (
         attempt (
-            text "FROM " >>. (parens selectQuery) >>= fun subQuery ->
+            text "FROM" >>. (parens selectQuery) >>= fun subQuery ->
             optional (text "AS") >>= fun _ ->
             simpleIdentifier >>= fun alias ->
             preturn (Expr.As(subQuery, Expr.Ident alias))
         )
         <|>
         attempt (
-            text "FROM " >>. simpleIdentifier >>= fun table ->
+            text "FROM" >>. simpleIdentifier >>= fun table ->
             optional (text "AS") >>= fun _ ->
             simpleIdentifier >>= fun alias ->
             preturn (Expr.As(Expr.Ident table, Expr.Ident alias))
