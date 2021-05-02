@@ -513,4 +513,48 @@ let selectQueryTests = testList "Parse SELECT tests" [
             From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
             Limit = Some (Expr.Integer 100)
         }
-]
+
+    testSelect "SELECT 1 -- This is a comment" {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
+    testSelect """
+        -- This is a comment
+        SELECT 1""" {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
+    testSelect """
+        /* Comment inserted first */
+        SELECT 1""" {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
+    testSelect """
+        SELECT 1
+        /* Comment inserted last */
+        """ {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
+    testSelect """
+        SELECT 1;
+        /* Comment inserted after semicolon */
+        """ {
+        SelectExpr.Default with Columns = [Expr.Integer 1]
+    }
+
+    testSelect """
+        SELECT * /* Comment inserted here */
+        FROM -- Ignore
+        (SELECT NOW()) time /* Comment inserted here */
+        LIMIT 1 -- Ignore
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1)
+    }]
