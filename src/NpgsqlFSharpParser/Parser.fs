@@ -86,8 +86,6 @@ let manyCharsBetween popen pclose pchar = popen >>? manyCharsTill pchar pclose
 // Parses any string between popen and pclose
 let anyStringBetween popen pclose = manyCharsBetween popen pclose anyChar
 
-let skipBetween popen pclose = popen >>? skipManyTill skipAnyChar pclose
-
 // Cannot be a reserved keyword.
 let unquotedIdentifier : Parser<string, unit> =
     let isIdentifierFirstChar token = isLetter token
