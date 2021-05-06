@@ -203,19 +203,14 @@ namespace NpgsqlFSharpVs
                 return;
             }
 
-            var loadedSchema = SqlAnalysis.databaseSchema(connectionString);
-
-            if (loadedSchema.IsError)
-            {
-                return;
-            }
+            
 
             var source = _currentSnapshot.GetText();
             var sourceText = SourceText.ofString(source);
 
             var getProjectOptions = _provider.CheckerInstance.GetProjectOptionsFromScript(
                 filename: path,
-                sourceText: sourceText,
+                source: sourceText,
                 assumeDotNetFramework: false,
                 useSdkRefs: true,
                 useFsiAuxLib: true,
@@ -224,7 +219,8 @@ namespace NpgsqlFSharpVs
                 loadedTimeStamp: FSharpOption<DateTime>.None,
                 extraProjectInfo: FSharpOption<object>.None,
                 optionsStamp: FSharpOption<long>.None,
-                userOpName: FSharpOption<string>.None
+                userOpName: FSharpOption<string>.None,
+                sdkDirOverride: FSharpOption<string>.None
             );
 
             var (options, errors) = await FSharpAsync.StartAsTask(getProjectOptions, null, token);
@@ -236,10 +232,9 @@ namespace NpgsqlFSharpVs
 
             var performParseAndCheck = _provider.CheckerInstance.ParseAndCheckFileInProject(
                 filename: path, 
-                fileversion: 1,
+                fileVersion: 1,
                 sourceText: sourceText,
                 options: options, 
-                textSnapshotInfo: FSharpOption<object>.None,
                 userOpName: FSharpOption<string>.None
             );
 
@@ -259,12 +254,48 @@ namespace NpgsqlFSharpVs
                 symbols: SqlAnalyzer.getSymbols(checkResults)
             );
 
-            var databaseSchema = loadedSchema.ResultValue;
+            var operationBlocks = SyntacticAnalysis.findSqlOperations(context);
+            var loadedSchema = SqlAnalysis.databaseSchema(connectionString);
 
-            var errorMessages =
-               from operation in SyntacticAnalysis.findSqlOperations(context)
-               from analysisOutput in SqlAnalysis.analyzeOperation(operation, connectionString, databaseSchema)
-               select analysisOutput;
+            var errorMessages = new List<Message>();
+
+            if (loadedSchema.IsError)
+            {
+                foreach (var operation in operationBlocks)
+                {
+                    var containsSkipAnalysis = operation.blocks.Any(block => block.IsSkipAnalysis);
+                    foreach(var block in operation.blocks)
+                    {
+                        var blockRange = block.Range();
+                        if ((block.IsQuery || block.IsTransaction) && OptionModule.IsSome(blockRange) && !containsSkipAnalysis)
+                        {
+                            var internalError = (loadedSchema.ErrorValue ?? "").Replace("3D000:", "").Replace("28P01:", "");
+                            var fullError = $"Error occured while trying to connect to the database using the configured connection string in NPGSQL_FSHARP in order to perform static analysis:{internalError}";
+                            var errorMessage = new Message(
+                                type: "Error",
+                                message: fullError,
+                                code: "SQL101",
+                                severity: Severity.Warning,
+                                range: blockRange.Value,
+                                fixes: Microsoft.FSharp.Collections.FSharpList<Fix>.Empty
+                            );
+
+                            errorMessages.Add(errorMessage);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var databaseSchema = loadedSchema.ResultValue;
+                foreach (var operation in operationBlocks)
+                {
+                    foreach(var analysisOutput in SqlAnalysis.analyzeOperation(operation, connectionString, databaseSchema))
+                    {
+                        errorMessages.Add(analysisOutput);
+                    }
+                }
+            }
 
             var oldLintingErrors = this.Factory.CurrentSnapshot;
             var newLintErrors = new LintingErrorsSnapshot(_document, oldLintingErrors.VersionNumber + 1);
@@ -282,7 +313,7 @@ namespace NpgsqlFSharpVs
             UpdateLintingErrors(newLintErrors);
         }
 
-        public static SnapshotSpan RangeToSpan(Range.range fsrange, ITextSnapshot textSnapshot)
+        public static SnapshotSpan RangeToSpan(Range fsrange, ITextSnapshot textSnapshot)
         {
             var from = fsrange.StartLine - 1;
             ITextSnapshotLine anchor = textSnapshot.GetLineFromLineNumber(from);
@@ -292,7 +323,7 @@ namespace NpgsqlFSharpVs
             return new SnapshotSpan(textSnapshot, new Span(start, end - start));
         }
 
-        public static ITrackingSpan RangeToTrackingSpan(Range.range fsrange, ITextSnapshot textSnapshot)
+        public static ITrackingSpan RangeToTrackingSpan(Range fsrange, ITextSnapshot textSnapshot)
         {
             var from = fsrange.StartLine - 1;
             ITextSnapshotLine anchor = textSnapshot.GetLineFromLineNumber(from);

@@ -1,7 +1,7 @@
 namespace Npgsql.FSharp.Analyzers.Core
 
 open System
-open FSharp.Compiler.Range
+open FSharp.Compiler.Text
 open F23.StringSimilarity
 open NpgsqlFSharpParser
 open InformationSchema

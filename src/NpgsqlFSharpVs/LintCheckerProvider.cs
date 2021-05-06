@@ -104,7 +104,7 @@ namespace NpgsqlFSharpVs
         #region Checker
 
         private Lazy<FSharpChecker> _checker = new Lazy<FSharpChecker>(() =>
-            FSharpChecker.Create(null, null, null, null, null, null, null, null)
+            FSharpChecker.Create(null, null, null, null, null, null, null, null, null)
         );
 
         public FSharpChecker CheckerInstance => _checker.Value;

@@ -1,3 +1,6 @@
+### 3.26.0 - 2021-05-06
+* Allow the SQL parser to handle comments and update to latest FSharp Analyzers SDK
+
 ### 3.25.0 - 2021-04-26
 * Improvements to the SQL parser 
 

@@ -2,7 +2,7 @@ namespace Npgsql.FSharp.Analyzers.Core
 
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.SyntaxTree
-open FSharp.Compiler.Range
+open FSharp.Compiler.Text
 
 module SyntacticAnalysis =
 
@@ -434,7 +434,7 @@ module SyntacticAnalysis =
             [ yield! findReadColumnAttempts funcExpr; yield! findReadColumnAttempts argExpr ]
         | SynExpr.Paren(expr, leftRange, rightRange, range) ->
             [ yield! findReadColumnAttempts expr ]
-        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
+        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, parsedData, range) ->
             [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
              [ yield! findReadColumnAttempts body
@@ -492,7 +492,7 @@ module SyntacticAnalysis =
                 | None -> ()
             ]
 
-        | SynExpr.Lambda(_, _, args, body, range) ->
+        | SynExpr.Lambda(_, _, args, body, parsedData, range) ->
             [
                 yield! findReadColumnAttempts body
             ]
@@ -676,7 +676,7 @@ module SyntacticAnalysis =
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
-        | SynExpr.Lambda (fromMethod, inSeq, args, body, range) ->
+        | SynExpr.Lambda (fromMethod, inSeq, args, body, parsedData, range) ->
             visitSyntacticExpression body range
 
         | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
@@ -695,7 +695,7 @@ module SyntacticAnalysis =
 
     let findLiterals (ctx: SqlAnalyzerContext) =
         let values = new ResizeArray<string * string>()
-        for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
+        for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues()) do
             match symbol.LiteralValue with
             | Some value when value.GetType() = typeof<string> ->
                 values.Add((symbol.LogicalName, unbox<string> value))
