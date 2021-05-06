@@ -150,6 +150,16 @@ let number : Parser<Expr, unit> =
     spaces >>. pfloat .>> spacesOrComment
     |>> Expr.Float
 
+let timestamp : Parser<Expr, unit> =
+    attempt (spaces >>. (text "TIMESTAMP") >>. spacesOrComment
+    >>. quotedString .>> spacesOrComment)
+    |>> Expr.Timestamp
+
+let date : Parser<Expr, unit> =
+    attempt (spaces >>. (text "DATE") >>. spacesOrComment
+    >>. quotedString .>> spacesOrComment)
+    |>> Expr.Date
+
 let boolean : Parser<Expr, unit> =
     (text "true" |>> fun _ -> Expr.Boolean true)
     <|> (text "false" |>> fun _ -> Expr.Boolean false)
@@ -160,7 +170,7 @@ let quotedString =
     <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
-    quotedString
+    quotedString .>> spacesOrComment
     |>> Expr.StringLiteral
 
 let commaSeparatedExprs = sepBy expr comma
@@ -257,6 +267,13 @@ let commaSeparatedIdentifiers = sepBy1 identifier comma
 let optionalWhereClause = optionalExpr (text "WHERE" >>. expr)
 
 let optionalHavingClause = optionalExpr (text "HAVING" >>. expr)
+
+let optionalScope =
+    optionalExpr (
+        (text "LOCAL" |>> fun _ -> Local)
+        <|>
+        (text "SESSION" |>> fun _ -> Session)
+    )
 
 let optionalFrom =
     optionalExpr (
@@ -365,6 +382,39 @@ let updateQuery =
 
         preturn (Expr.UpdateQuery query)
 
+
+let toOrEquals =
+    text "=" <|> text "TO"
+
+
+
+// TODO: SET TIME ZONE value is an alias for SET timezone TO value
+let setQuery =
+    text "SET" >>.
+    optionalScope >>= fun scope ->
+    simpleIdentifier >>= fun parameter ->
+    toOrEquals >>= fun _ ->
+    expr >>= fun value ->
+        let query = {
+            SetExpr.Default with
+                Parameter = parameter
+                Scope = defaultArg scope Session
+                Value = Some value
+        }
+
+        preturn (Expr.SetQuery query)
+
+let declareQuery =
+    text "DECLARE" >>.
+    simpleIdentifier >>= fun parameter ->
+    text "CURSOR FOR" >>.
+    expr >>= fun query ->
+        let query = {
+            Parameter = parameter
+            Query = query
+        }
+        preturn (Expr.DeclareQuery (Cursor query))
+
 let spacesOrComment =
     let comment = skipString "/*" >>. (charsTillString "*/" true 8096)
     let commentEol = skipString "--" >>. skipRestOfLine true
@@ -373,6 +423,10 @@ let spacesOrComment =
     optional comment .>>
     optional commentEol .>>
     spaces
+
+let stringOrFail = function
+    | Expr.StringLiteral(value) -> value
+    | _ -> failwith "not a string"
 
 opp.AddOperator(InfixOperator("AND", spacesOrComment, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("AS", spacesOrComment, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
@@ -397,12 +451,16 @@ opp.TermParser <- choice [
     (attempt insertQuery)
     (attempt deleteQuery)
     (attempt selectQuery)
+    (attempt setQuery)
+    (attempt declareQuery)
     (attempt functionExpr)
     (text "(") >>. expr .>> (text ")")
     star
     integer
     boolean
     number
+    date
+    timestamp
     stringLiteral
     identifier
     parameter

@@ -10,6 +10,8 @@
         <Compile Include="ParseInsertTests.fs" />
         <Compile Include="ParseDeleteTests.fs" />
         <Compile Include="ParseSelectTests.fs" />
+        <Compile Include="ParseSetTests.fs" />
+        <Compile Include="ParseDeclareTests.fs" />
         <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Analyzer.fs" />
         <Compile Include="Tests.fs" />

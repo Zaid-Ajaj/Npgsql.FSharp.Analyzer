@@ -557,4 +557,44 @@ let selectQueryTests = testList "Parse SELECT tests" [
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
             Limit = Some (Expr.Integer 1)
-    }]
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > TIMESTAMP '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Timestamp("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > DATE '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Date("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        select timestamp '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Timestamp("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        select date '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Date("2021-01-04 00:00:00") ]
+    }
+]
+

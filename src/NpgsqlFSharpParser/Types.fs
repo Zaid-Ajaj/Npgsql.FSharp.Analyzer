@@ -10,6 +10,8 @@ type Expr =
     | StringLiteral of string
     | Integer of int
     | Float of float
+    | Date of string
+    | Timestamp of string
     | Function of name:string * arguments:Expr list
     | And of left:Expr * right:Expr
     | Or of left:Expr * right:Expr
@@ -29,6 +31,8 @@ type Expr =
     | DeleteQuery of expr:DeleteExpr
     | InsertQuery of expr: InsertExpr
     | UpdateQuery of expr: UpdateExpr
+    | SetQuery of expr: SetExpr
+    | DeclareQuery of expr: DeclareExpr
 
 type Ordering =
     | Asc of columnName:string
@@ -110,3 +114,32 @@ type InsertExpr = {
             ConflictResolution = [ ]
             Returning = [ ]
         }
+
+type Scope =
+    | Local
+    | Session
+
+type SetExpr = {
+    Parameter: string
+    Value: Expr option
+    Scope: Scope
+} with
+    static member Default =
+        {
+            Parameter = "";
+            Value = None
+            Scope = Session
+        }
+
+type CursorDeclaration = {
+    Parameter: string
+    Query: Expr
+} with
+    static member Default =
+        {
+            Parameter = "";
+            Query = Expr.Null
+        }
+
+type DeclareExpr =
+    | Cursor of CursorDeclaration
