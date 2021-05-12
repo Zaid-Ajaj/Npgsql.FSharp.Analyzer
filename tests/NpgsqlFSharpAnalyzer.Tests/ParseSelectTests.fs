@@ -39,11 +39,11 @@ let selectQueryTests = testList "Parse SELECT tests" [
     }
 
     testSelect "SELECT 1" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect "SELECT 36109712494634" {
-        SelectExpr.Default with Columns = [Expr.BigInt 36109712494634L]
+        SelectExpr.Default with Columns = [Expr.Integer 36109712494634L]
     }
 
     testSelect "SELECT ''" {
@@ -51,7 +51,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
     }
 
     testSelect "SELECT 1::text" {
-        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1, Expr.Ident "text")]
+        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1L, Expr.Ident "text")]
     }
 
     testSelect "SELECT @input::text, value::ltree" {
@@ -121,7 +121,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [
                 Expr.As(Expr.StringConcat(Expr.Ident "ename", Expr.Ident "empno"), Expr.Ident "EmpDetails")
-                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0 ]), Expr.Ident "TOTALSAL")
+                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0L ]), Expr.Ident "TOTALSAL")
             ]
 
             From = Some (Expr.Ident "sales")
@@ -143,7 +143,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users")
-            Limit = Some(Expr.Integer 10)
+            Limit = Some(Expr.Integer 10L)
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT @numberOfRows" {
@@ -280,7 +280,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "email"]
             From = Some (Expr.Ident "users")
-            Where = Some (Expr.In(Expr.Ident "user_id", Expr.List([Expr.Integer 1; Expr.Integer 2;  Expr.Integer 3])))
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.List([Expr.Integer 1L; Expr.Integer 2L;  Expr.Integer 3L])))
     }
 
     testSelect """
@@ -411,7 +411,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
     }
 
     testSelect """
@@ -443,9 +443,9 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
 
-            Offset = Some (Expr.Integer 100)
+            Offset = Some (Expr.Integer 100L)
     }
 
     testSelect """
@@ -459,7 +459,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
+            Limit = Some (Expr.Integer 1L)
     }
 
     testSelect """
@@ -474,7 +474,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
+            Limit = Some (Expr.Integer 1L)
     }
 
     testSelect """
@@ -531,37 +531,37 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [ Expr.Ident("public.$Table.timestamp") ]
             From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
-            Limit = Some (Expr.Integer 100)
+            Limit = Some (Expr.Integer 100L)
         }
 
     testSelect "SELECT 1 -- This is a comment" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         -- This is a comment
         SELECT 1""" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         /* Comment inserted first */
         SELECT 1""" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         SELECT 1
         /* Comment inserted last */
         """ {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         SELECT 1;
         /* Comment inserted after semicolon */
         """ {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
@@ -576,7 +576,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
+            Limit = Some (Expr.Integer 1L)
     }
 
     testSelect """

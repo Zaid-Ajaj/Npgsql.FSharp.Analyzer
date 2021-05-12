@@ -147,7 +147,7 @@ let text value : Parser<string, unit> =
     spaces >>. pstringCI value .>> spacesOrComment
 
 let star : Parser<Expr, unit> =
-    attempt (text "*" |>> fun _ -> Expr.Star)
+    text "*" |>> fun _ -> Expr.Star
 
 let opp = new OperatorPrecedenceParser<Expr, unit, unit>()
 
@@ -158,22 +158,8 @@ let parens parser = between (text "(") (text ")") parser
 let comma = text ","
 
 let integer : Parser<Expr, unit> =
-    attempt (
-        spaces >>. pint32 .>> spacesOrComment
-        |>> Expr.Integer
-    )
-
-let bigint : Parser<Expr, unit> =
-    attempt (
-        spaces >>. pint64 .>> spacesOrComment
-        |>> Expr.BigInt
-    )
-
-let smallint : Parser<Expr, unit> =
-    attempt (
-        spaces >>. pint16 .>> spacesOrComment
-        |>> Expr.SmallInt
-    )
+    spaces >>. pint64 .>> spacesOrComment
+    |>> Expr.Integer
 
 let number : Parser<Expr, unit> =
     spaces >>. pfloat .>> spacesOrComment
@@ -190,10 +176,8 @@ let date : Parser<Expr, unit> =
     |>> Expr.Date
 
 let boolean : Parser<Expr, unit> =
-    attempt(
-        (text "true" |>> fun _ -> Expr.Boolean true)
-        <|> (text "false" |>> fun _ -> Expr.Boolean false)
-    )
+    (text "true" |>> fun _ -> Expr.Boolean true)
+    <|> (text "false" |>> fun _ -> Expr.Boolean false)
 
 // Parses any string between double quotes
 let quotedString =
@@ -201,14 +185,12 @@ let quotedString =
     <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
-    attempt(
-        quotedString .>> spacesOrComment
-        |>> Expr.StringLiteral
-    )
+    quotedString .>> spacesOrComment
+    |>> Expr.StringLiteral
 
 /// Parses 2 or more comma separated values. I.e (1, 2), but not (3) which will become an integer.
 let valueList =
-    let numeric = number <|> integer <|> bigint
+    let numeric = integer <|> number
     attempt(
         numeric .>> (pstring ",") >>= fun head ->
         sepBy1 numeric (pstring ",") >>= fun tail ->
@@ -428,8 +410,6 @@ let updateQuery =
 let toOrEquals =
     text "=" <|> text "TO"
 
-
-
 // TODO: SET TIME ZONE value is an alias for SET timezone TO value
 let setQuery =
     text "SET" >>.
@@ -506,9 +486,7 @@ opp.TermParser <- choice [
     (text "(") >>. expr .>> (text ")")
     valueList
     star
-//    smallint
     integer
-    bigint
     boolean
     number
     date

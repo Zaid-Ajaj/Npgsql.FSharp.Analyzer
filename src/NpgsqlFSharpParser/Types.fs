@@ -10,11 +10,8 @@ type Expr =
     | Parameter of string
     | Boolean of bool
     | StringLiteral of string
-    | Integer of int
-    | BigInt of int64
-    | SmallInt of int16
+    | Integer of int64
     | Float of float
-    | Double of double
     | Date of string
     | Timestamp of string
     | Function of name:string * arguments:Expr list
