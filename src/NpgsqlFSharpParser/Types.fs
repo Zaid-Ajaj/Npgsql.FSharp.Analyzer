@@ -1,7 +1,40 @@
 namespace rec NpgsqlFSharpParser
 
 [<RequireQualifiedAccess>]
+type DataType =
+    | Integer
+    | BigInt
+    | SmallInt
+    | Real
+    | Double
+    | Array of dataType:DataType * size:int option
+
+    static member TryFromString(valueType: string, ?isArray: bool, ?n: int) : DataType option =
+        let dType =
+            match valueType.ToUpper () with
+            | "INT2"
+            | "SMALLINT" -> Some SmallInt
+            | "INT"
+            | "INT4"
+            | "INTEGER" -> Some Integer
+            | "INT8"
+            | "BIGINT" -> Some BigInt
+            | "FLOAT4"
+            | "REAL" -> Some Real
+            | "FLOAT8"
+            | "DOUBLE PRECISION" -> Some Double
+            | _ -> None
+
+        let isArray = isArray |> Option.bind (function | false -> None | _ -> Some true)
+
+        dType
+        |> Option.bind (fun t -> isArray |> Option.map (fun _ -> Array(dataType=t, size=None)))
+        |> Option.orElse dType
+
+
+[<RequireQualifiedAccess>]
 type Expr =
+    | Array of Expr list
     | Null
     | Star
     | Ident of string
@@ -20,7 +53,9 @@ type Expr =
     | StringConcat of left:Expr * right:Expr
     | JsonIndex of left:Expr * right:Expr
     | TypeCast of left:Expr * right:Expr
+    | DataType of DataType
     | Not of expr:Expr
+    | Any of expr:Expr
     | Equals of left:Expr * right:Expr
     | GreaterThan of left:Expr * right:Expr
     | LessThan of left:Expr * right:Expr

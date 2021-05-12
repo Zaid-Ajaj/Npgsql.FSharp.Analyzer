@@ -27,8 +27,7 @@ let ftestDeclare inputQuery expected =
 
 [<Tests>]
 let declareQueryTests = testList "Parse DECLARE tests" [
-
-    ftestDeclare "DECLARE c1 CURSOR FOR SELECT NOW();" ({
+    testDeclare "DECLARE c1 CURSOR FOR SELECT NOW();" ({
         Parameter = "c1"
         Query = Expr.SelectQuery { SelectExpr.Default with Columns = [Expr.Function("NOW", [])] }
     } |> Cursor)

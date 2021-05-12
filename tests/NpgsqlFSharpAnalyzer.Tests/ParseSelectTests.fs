@@ -33,6 +33,11 @@ let selectQueryTests = testList "Parse SELECT tests" [
             Columns = [Expr.Function("NOW", [])]
     }
 
+    testSelect "SELECT (NOW())" {
+        SelectExpr.Default with
+            Columns = [Expr.Function("NOW", [])]
+    }
+
     testSelect "SELECT 1" {
         SelectExpr.Default with Columns = [Expr.Integer 1]
     }
@@ -595,6 +600,46 @@ let selectQueryTests = testList "Parse SELECT tests" [
     """ {
         SelectExpr.Default with
             Columns = [Expr.Date("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{12378169571900,36109712494634,54795035045033}'::bigint[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{12378169571900,36109712494634,54795035045033}",
+                                Expr.DataType(DataType.Array(DataType.BigInt, None))
+                            )
+                        )
+                    )
+                )
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{1.1,361097124946,34,54795035045033.34}'::double precision[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{1.1,361097124946,34,54795035045033.34}",
+                                Expr.DataType(DataType.Array(DataType.Double, None))
+                            )
+                        )
+                    )
+                )
     }
 ]
 

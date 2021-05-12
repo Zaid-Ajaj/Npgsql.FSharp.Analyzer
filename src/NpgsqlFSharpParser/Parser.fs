@@ -122,6 +122,21 @@ let simpleIdentifier =
 let identifier : Parser<Expr, unit> =
     simpleIdentifier |>> Expr.Ident
 
+let datatype : Parser<Expr, unit> =
+    let isIdentifierFirstChar token = isLetter token
+    let isIdentifierChar token = isLetter token || isDigit token || token = '_' || token = ' '
+    let dtIdent = many1Satisfy2L isIdentifierFirstChar isIdentifierChar "datatype"
+
+    attempt(
+        dtIdent >>= fun ident ->
+        opt (pstring "[]") >>= fun brackets ->
+        spacesOrComment >>= fun _ ->
+        let isArray = brackets |> Option.map (fun _ -> true)
+        match (DataType.TryFromString(ident, ?isArray=isArray)) with
+        | Some dt -> preturn (Expr.DataType(dt))
+        | _ -> fail (sprintf "%s is not a valid datatype" ident)
+    )
+
 let parameter : Parser<Expr, unit> =
     let isIdentifierFirstChar token = token = '@'
     let isIdentifierChar token = isLetter token || isDigit token || token = '_'
@@ -431,7 +446,8 @@ let stringOrFail = function
 opp.AddOperator(InfixOperator("AND", spacesOrComment, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("AS", spacesOrComment, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
 opp.AddOperator(InfixOperator("as", spacesOrComment, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
-opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY"), 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
+opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
+opp.AddOperator(InfixOperator("or", notFollowedBy (text "der by") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))
 opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right -> Expr.LessThan(left, right)))
@@ -440,11 +456,12 @@ opp.AddOperator(InfixOperator(">=", spaces, 9, Associativity.Left, fun left righ
 opp.AddOperator(InfixOperator("=", spaces, 9, Associativity.Left, fun left right -> Expr.Equals(left, right)))
 opp.AddOperator(InfixOperator("<>", spaces, 9, Associativity.Left, fun left right -> Expr.Not(Expr.Equals(left, right))))
 opp.AddOperator(InfixOperator("||", spaces, 9, Associativity.Left, fun left right -> Expr.StringConcat(left, right)))
-opp.AddOperator(InfixOperator("::", spaces, 9, Associativity.Left, fun left right -> Expr.TypeCast(left, right)))
+opp.AddOperator(InfixOperator("::", spacesOrComment, 9, Associativity.Left, fun left right -> Expr.TypeCast(left, right)))
 opp.AddOperator(InfixOperator("->>", spaces, 9, Associativity.Left, fun left right -> Expr.JsonIndex(left, right)))
 
 opp.AddOperator(PostfixOperator("IS NULL", spacesOrComment, 8, false, fun value -> Expr.Equals(Expr.Null, value)))
 opp.AddOperator(PostfixOperator("IS NOT NULL", spacesOrComment, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
+opp.AddOperator(PrefixOperator("ANY", spacesOrComment, 8, true, fun value -> Expr.Any(value)))
 
 opp.TermParser <- choice [
     (attempt updateQuery)
@@ -460,6 +477,7 @@ opp.TermParser <- choice [
     boolean
     number
     date
+    datatype
     timestamp
     stringLiteral
     identifier
