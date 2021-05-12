@@ -42,6 +42,10 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with Columns = [Expr.Integer 1]
     }
 
+    testSelect "SELECT 36109712494634" {
+        SelectExpr.Default with Columns = [Expr.BigInt 36109712494634L]
+    }
+
     testSelect "SELECT ''" {
         SelectExpr.Default with Columns = [Expr.StringLiteral ""]
     }
@@ -266,6 +270,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
                     From = Some (Expr.Ident "user_ids")
                     Where = Some(Expr.Not(Expr.Equals(Expr.Null, Expr.Ident "id")))
             }))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
+        WHERE user_id IN (1, 2, 3)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.List([Expr.Integer 1; Expr.Integer 2;  Expr.Integer 3])))
     }
 
     testSelect """

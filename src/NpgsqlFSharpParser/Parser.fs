@@ -147,7 +147,7 @@ let text value : Parser<string, unit> =
     spaces >>. pstringCI value .>> spacesOrComment
 
 let star : Parser<Expr, unit> =
-    text "*" |>> fun _ -> Expr.Star
+    attempt (text "*" |>> fun _ -> Expr.Star)
 
 let opp = new OperatorPrecedenceParser<Expr, unit, unit>()
 
@@ -158,8 +158,22 @@ let parens parser = between (text "(") (text ")") parser
 let comma = text ","
 
 let integer : Parser<Expr, unit> =
-    spaces >>. pint32 .>> spacesOrComment
-    |>> Expr.Integer
+    attempt (
+        spaces >>. pint32 .>> spacesOrComment
+        |>> Expr.Integer
+    )
+
+let bigint : Parser<Expr, unit> =
+    attempt (
+        spaces >>. pint64 .>> spacesOrComment
+        |>> Expr.BigInt
+    )
+
+let smallint : Parser<Expr, unit> =
+    attempt (
+        spaces >>. pint16 .>> spacesOrComment
+        |>> Expr.SmallInt
+    )
 
 let number : Parser<Expr, unit> =
     spaces >>. pfloat .>> spacesOrComment
@@ -176,8 +190,10 @@ let date : Parser<Expr, unit> =
     |>> Expr.Date
 
 let boolean : Parser<Expr, unit> =
-    (text "true" |>> fun _ -> Expr.Boolean true)
-    <|> (text "false" |>> fun _ -> Expr.Boolean false)
+    attempt(
+        (text "true" |>> fun _ -> Expr.Boolean true)
+        <|> (text "false" |>> fun _ -> Expr.Boolean false)
+    )
 
 // Parses any string between double quotes
 let quotedString =
@@ -185,8 +201,19 @@ let quotedString =
     <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
-    quotedString .>> spacesOrComment
-    |>> Expr.StringLiteral
+    attempt(
+        quotedString .>> spacesOrComment
+        |>> Expr.StringLiteral
+    )
+
+/// Parses 2 or more comma separated values. I.e (1, 2), but not (3) which will become an integer.
+let valueList =
+    let numeric = number <|> integer <|> bigint
+    attempt(
+        numeric .>> (pstring ",") >>= fun head ->
+        sepBy1 numeric (pstring ",") >>= fun tail ->
+        preturn (Expr.List (head::tail))
+    )
 
 let commaSeparatedExprs = sepBy expr comma
 
@@ -444,11 +471,13 @@ let stringOrFail = function
     | _ -> failwith "not a string"
 
 opp.AddOperator(InfixOperator("AND", spacesOrComment, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
+opp.AddOperator(InfixOperator("and", spacesOrComment, 7, Associativity.Left, fun left right -> Expr.And(left, right)))
 opp.AddOperator(InfixOperator("AS", spacesOrComment, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
 opp.AddOperator(InfixOperator("as", spacesOrComment, 6, Associativity.Left, fun left right -> Expr.As(left, right)))
 opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("or", notFollowedBy (text "der by") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
+opp.AddOperator(InfixOperator("in", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))
 opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right -> Expr.LessThan(left, right)))
 opp.AddOperator(InfixOperator("<=", spaces, 9, Associativity.Left, fun left right -> Expr.LessThanOrEqual(left, right)))
@@ -460,8 +489,11 @@ opp.AddOperator(InfixOperator("::", spacesOrComment, 9, Associativity.Left, fun 
 opp.AddOperator(InfixOperator("->>", spaces, 9, Associativity.Left, fun left right -> Expr.JsonIndex(left, right)))
 
 opp.AddOperator(PostfixOperator("IS NULL", spacesOrComment, 8, false, fun value -> Expr.Equals(Expr.Null, value)))
+opp.AddOperator(PostfixOperator("is null", spacesOrComment, 8, false, fun value -> Expr.Equals(Expr.Null, value)))
 opp.AddOperator(PostfixOperator("IS NOT NULL", spacesOrComment, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
+opp.AddOperator(PostfixOperator("is not null", spacesOrComment, 8, false, fun value -> Expr.Not(Expr.Equals(Expr.Null, value))))
 opp.AddOperator(PrefixOperator("ANY", spacesOrComment, 8, true, fun value -> Expr.Any(value)))
+opp.AddOperator(PrefixOperator("any", spacesOrComment, 8, true, fun value -> Expr.Any(value)))
 
 opp.TermParser <- choice [
     (attempt updateQuery)
@@ -472,8 +504,11 @@ opp.TermParser <- choice [
     (attempt declareQuery)
     (attempt functionExpr)
     (text "(") >>. expr .>> (text ")")
+    valueList
     star
+//    smallint
     integer
+    bigint
     boolean
     number
     date

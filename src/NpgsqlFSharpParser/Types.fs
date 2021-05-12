@@ -1,40 +1,9 @@
 namespace rec NpgsqlFSharpParser
 
 [<RequireQualifiedAccess>]
-type DataType =
-    | Integer
-    | BigInt
-    | SmallInt
-    | Real
-    | Double
-    | Array of dataType:DataType * size:int option
-
-    static member TryFromString(valueType: string, ?isArray: bool, ?n: int) : DataType option =
-        let dType =
-            match valueType.ToUpper () with
-            | "INT2"
-            | "SMALLINT" -> Some SmallInt
-            | "INT"
-            | "INT4"
-            | "INTEGER" -> Some Integer
-            | "INT8"
-            | "BIGINT" -> Some BigInt
-            | "FLOAT4"
-            | "REAL" -> Some Real
-            | "FLOAT8"
-            | "DOUBLE PRECISION" -> Some Double
-            | _ -> None
-
-        let isArray = isArray |> Option.bind (function | false -> None | _ -> Some true)
-
-        dType
-        |> Option.bind (fun t -> isArray |> Option.map (fun _ -> Array(dataType=t, size=None)))
-        |> Option.orElse dType
-
-
-[<RequireQualifiedAccess>]
 type Expr =
     | Array of Expr list
+    | List of Expr list
     | Null
     | Star
     | Ident of string
@@ -42,7 +11,10 @@ type Expr =
     | Boolean of bool
     | StringLiteral of string
     | Integer of int
+    | BigInt of int64
+    | SmallInt of int16
     | Float of float
+    | Double of double
     | Date of string
     | Timestamp of string
     | Function of name:string * arguments:Expr list
@@ -178,3 +150,34 @@ type CursorDeclaration = {
 
 type DeclareExpr =
     | Cursor of CursorDeclaration
+
+[<RequireQualifiedAccess>]
+type DataType =
+    | Integer
+    | BigInt
+    | SmallInt
+    | Real
+    | Double
+    | Array of dataType:DataType * size:int option
+
+    static member TryFromString(valueType: string, ?isArray: bool, ?arraySize: int) : DataType option =
+        let dType =
+            match valueType.ToUpper () with
+            | "INT2"
+            | "SMALLINT" -> Some SmallInt
+            | "INT"
+            | "INT4"
+            | "INTEGER" -> Some Integer
+            | "INT8"
+            | "BIGINT" -> Some BigInt
+            | "FLOAT4"
+            | "REAL" -> Some Real
+            | "FLOAT8"
+            | "DOUBLE PRECISION" -> Some Double
+            | _ -> None
+
+        let isArray = isArray |> Option.bind (function | false -> None | _ -> Some true) // Note: Some false -> None.
+
+        dType
+        |> Option.bind (fun t -> isArray |> Option.map (fun _ -> Array(dataType=t, size=arraySize)))
+        |> Option.orElse dType
