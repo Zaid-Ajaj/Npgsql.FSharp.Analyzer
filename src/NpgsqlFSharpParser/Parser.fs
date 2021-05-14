@@ -437,6 +437,17 @@ let declareQuery =
         }
         preturn (Expr.DeclareQuery (Cursor query))
 
+let fetchQuery =
+    text "FETCH" >>.
+    pint32 >>= fun count ->
+    text "FROM" >>.
+    simpleIdentifier >>= fun cursor ->
+        let query = {
+            CursorName = cursor
+            Direction = Direction.Forward count
+        }
+        preturn (Expr.FetchQuery query)
+
 let spacesOrComment =
     let comment = skipString "/*" >>. (charsTillString "*/" true 8096)
     let commentEol = skipString "--" >>. skipRestOfLine true
@@ -482,6 +493,7 @@ opp.TermParser <- choice [
     (attempt selectQuery)
     (attempt setQuery)
     (attempt declareQuery)
+    (attempt fetchQuery)
     (attempt functionExpr)
     (text "(") >>. expr .>> (text ")")
     valueList
