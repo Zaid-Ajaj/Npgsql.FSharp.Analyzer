@@ -37,6 +37,7 @@ type Expr =
     | UpdateQuery of expr: UpdateExpr
     | SetQuery of expr: SetExpr
     | DeclareQuery of expr: DeclareExpr
+    | FetchQuery of expr: FetchExpr
 
 type Ordering =
     | Asc of columnName:string
@@ -147,6 +148,32 @@ type CursorDeclaration = {
 
 type DeclareExpr =
     | Cursor of CursorDeclaration
+
+[<RequireQualifiedAccess>]
+type Direction =
+    /// Fetch next row. Same as Forward
+    | Next
+    /// Fetch prior row. Same as Backward
+    | Prior
+    | Absolute of int // First = Absolute 1, Last = Absolute -1
+    | Relative of int
+    | Forward of int // Same as count
+    | Backward of int
+    /// Fetch all remaining rows. Same as ForwardAll
+    | All
+    | BackwardAll
+
+type FetchExpr = {
+    // An open cursor name.
+    CursorName: string
+    // Defines the fetch direction.
+    Direction: Direction
+} with
+    static member Default =
+        {
+            CursorName = ""
+            Direction = Direction.Next
+        }
 
 [<RequireQualifiedAccess>]
 type DataType =
