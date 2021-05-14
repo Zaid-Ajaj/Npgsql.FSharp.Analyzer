@@ -33,8 +33,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
             Columns = [Expr.Function("NOW", [])]
     }
 
+    testSelect "SELECT (NOW())" {
+        SelectExpr.Default with
+            Columns = [Expr.Function("NOW", [])]
+    }
+
     testSelect "SELECT 1" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect "SELECT 36109712494634" {
+        SelectExpr.Default with Columns = [Expr.Integer 36109712494634L]
     }
 
     testSelect "SELECT ''" {
@@ -42,7 +51,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
     }
 
     testSelect "SELECT 1::text" {
-        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1, Expr.Ident "text")]
+        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1L, Expr.Ident "text")]
     }
 
     testSelect "SELECT @input::text, value::ltree" {
@@ -112,7 +121,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [
                 Expr.As(Expr.StringConcat(Expr.Ident "ename", Expr.Ident "empno"), Expr.Ident "EmpDetails")
-                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0 ]), Expr.Ident "TOTALSAL")
+                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0L ]), Expr.Ident "TOTALSAL")
             ]
 
             From = Some (Expr.Ident "sales")
@@ -134,7 +143,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users")
-            Limit = Some(Expr.Integer 10)
+            Limit = Some(Expr.Integer 10L)
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT @numberOfRows" {
@@ -266,6 +275,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect """
         SELECT username, email
         FROM users
+        WHERE user_id IN (1, 2, 3)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.List([Expr.Integer 1L; Expr.Integer 2L;  Expr.Integer 3L])))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
         JOIN meters ON meters.user_id = users.user_id
         LEFT JOIN utilities ON utilities.id = users.user_id
         WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
@@ -391,7 +411,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
     }
 
     testSelect """
@@ -423,9 +443,9 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
 
-            Offset = Some (Expr.Integer 100)
+            Offset = Some (Expr.Integer 100L)
     }
 
     testSelect """
@@ -439,7 +459,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
+            Limit = Some (Expr.Integer 1L)
     }
 
     testSelect """
@@ -454,7 +474,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
+            Limit = Some (Expr.Integer 1L)
     }
 
     testSelect """
@@ -511,37 +531,37 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [ Expr.Ident("public.$Table.timestamp") ]
             From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
-            Limit = Some (Expr.Integer 100)
+            Limit = Some (Expr.Integer 100L)
         }
 
     testSelect "SELECT 1 -- This is a comment" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         -- This is a comment
         SELECT 1""" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         /* Comment inserted first */
         SELECT 1""" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         SELECT 1
         /* Comment inserted last */
         """ {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
         SELECT 1;
         /* Comment inserted after semicolon */
         """ {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
     }
 
     testSelect """
@@ -556,5 +576,85 @@ let selectQueryTests = testList "Parse SELECT tests" [
                 SelectExpr.Default with
                     Columns = [Expr.Function ("NOW", [])]
             }, Expr.Ident "time"))
-            Limit = Some (Expr.Integer 1)
-    }]
+            Limit = Some (Expr.Integer 1L)
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > TIMESTAMP '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Timestamp("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > DATE '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Date("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        select timestamp '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Timestamp("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        select date '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Date("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{12378169571900,36109712494634,54795035045033}'::bigint[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{12378169571900,36109712494634,54795035045033}",
+                                Expr.DataType(DataType.Array(DataType.BigInt, None))
+                            )
+                        )
+                    )
+                )
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{1.1,361097124946,34,54795035045033.34}'::double precision[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{1.1,361097124946,34,54795035045033.34}",
+                                Expr.DataType(DataType.Array(DataType.Double, None))
+                            )
+                        )
+                    )
+                )
+    }
+]
+
