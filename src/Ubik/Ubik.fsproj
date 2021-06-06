@@ -7,8 +7,8 @@
     <PackAsTool>true</PackAsTool>
     <IsPackable>true</IsPackable>
     <RollForward>Major</RollForward>
-    <Version>3.26.0</Version>
-    <PackageReleaseNotes>Allow the SQL parser to handle comments</PackageReleaseNotes>
+    <Version>3.27.0</Version>
+    <PackageReleaseNotes>Handle fsx files</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

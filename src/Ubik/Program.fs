@@ -32,7 +32,8 @@ let getProject (args: string []) =
             |> function
                 | Some project -> project
                 | None ->
-                    Directory.GetFiles(Environment.CurrentDirectory, "*.fs")
+                    Directory.GetFiles(Environment.CurrentDirectory, "*.*")
+                    |> Array.filter (fun file -> file.EndsWith ".fsx" || file.EndsWith ".fs")
                     |> Array.map File
                     |> Files
 
@@ -48,12 +49,13 @@ let getProject (args: string []) =
                 |> function
                     | Some project -> project
                     | None ->
-                        Directory.GetFiles(Environment.CurrentDirectory, "*.fs")
+                        Directory.GetFiles(Environment.CurrentDirectory, "*.*")
+                        |> Array.filter (fun file -> file.EndsWith ".fsx" || file.EndsWith ".fs")
                         |> Array.map File
                         |> Files
             else 
                 multipleArgs
-                |> Array.filter (fun file -> file.EndsWith ".fs")
+                |> Array.filter (fun file -> file.EndsWith ".fs" || file.EndsWith ".fsx")
                 |> Array.map (fun file -> try File (resolveFile file) with _ -> InvalidFile file)
                 |> Files
 
@@ -180,8 +182,10 @@ let main argv =
 
         let fsharpFileNodes = document.GetElementsByTagName("Compile")
         analyzeFiles [|
-            for item in 0 .. fsharpFileNodes.Count - 1 ->
+            for item in 0 .. fsharpFileNodes.Count - 1 do
                 let relativePath = fsharpFileNodes.[item].Attributes.["Include"].InnerText
                 let projectParent = Directory.GetParent project
-                File(Path.Combine(projectParent.FullName, relativePath))
+                let filePath = Path.Combine(projectParent.FullName, relativePath)
+                if filePath.EndsWith ".fs" || filePath.EndsWith ".fsx"
+                then File(filePath)
         |]
