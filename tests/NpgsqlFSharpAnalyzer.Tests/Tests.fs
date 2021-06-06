@@ -69,6 +69,50 @@ let tests =
                 Expect.equal 2 parameters.Length "There are 2 parameters"
         }
 
+        test "Semantic analysis: finding SQL blocks in multiple nested modules which query a non-public schema" {
+            use db = createTestDatabase()
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE EXTENSION IF NOT EXISTS citext;CREATE SCHEMA test; CREATE TABLE test.articles (id BIGINT PRIMARY KEY NOT NULL,art_name CITEXT UNIQUE NOT NULL, stock BIGINT NOT NULL);"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/MultipleNestedModules.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let errors = SqlAnalysis.analyzeOperation operations.[0] db.ConnectionString schema
+                    Expect.equal 1 errors.Length "There should be one error message"
+                    Expect.stringContains errors.[0].Message "column \"x\" does not exist" "There should be an error message"
+        }
+
+        test "Semantic analysis using FSX: finding SQL blocks in multiple nested modules which query a non-public schema" {
+            use db = createTestDatabase()
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE EXTENSION IF NOT EXISTS citext;CREATE SCHEMA test; CREATE TABLE test.articles (id BIGINT PRIMARY KEY NOT NULL,art_name CITEXT UNIQUE NOT NULL, stock BIGINT NOT NULL);"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/MultipleNestedModules.fsx") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let errors = SqlAnalysis.analyzeOperation operations.[0] db.ConnectionString schema
+                    Expect.equal 1 errors.Length "There should be one error message"
+                    Expect.stringContains errors.[0].Message "column \"x\" does not exist" "There should be an error message"
+        }
+
         test "Syntactic analysis: SQL block found from top-level expression in module" {
             match context (find "../examples/hashing/topLevelExpressionIsDetected.fs") with
             | None -> failwith "Could not crack project"

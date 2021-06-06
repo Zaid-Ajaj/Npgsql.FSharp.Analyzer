@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="MultipleNestedModules.fsx" />
+    <Compile Include="MultipleNestedModules.fs" />
     <Compile Include="usingProcessedParameters.fs" />
     <Compile Include="castingNonNullableStaysNonNullable.fs" />
     <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
@@ -38,6 +40,8 @@
     <Compile Include="semanticAnalysis-redundantParameters.fs" />
     <Compile Include="syntacticAnalysis.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="Npgsql.FSharp" Version="4.0.0" />

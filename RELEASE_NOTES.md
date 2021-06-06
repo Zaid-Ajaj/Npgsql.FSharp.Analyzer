@@ -1,17 +1,20 @@
+### 3.26.1 - 2021-05-06
+* Fix nuget packaging
+
 ### 3.26.0 - 2021-05-06
 * Allow the SQL parser to handle comments and update to latest FSharp Analyzers SDK
 
 ### 3.25.0 - 2021-04-26
-* Improvements to the SQL parser 
+* Improvements to the SQL parser
 
 ### 3.24.0 - 2021-04-09
-* fixes dynamically applied parameters with more complex expressions 
+* fixes dynamically applied parameters with more complex expressions
 
 ### 3.23.0 - 2021-03-26
-* Detect typed let bindings 
+* Detect typed let bindings
 
 ### 3.22.1 - 2021-02-09
-* Let the analyzer continue its work when it comes across enum types 
+* Let the analyzer continue its work when it comes across enum types
 
 ### 3.22.0 - 2020-12-08
 * Detect queries within sequential expressions or statements
@@ -32,7 +35,7 @@
 * Analyze top level do expressions
 
 ### 3.15.0 - 2020-09-15
-* Analyze transaction parameter sets 
+* Analyze transaction parameter sets
 * Allow for literal queries on transactions
 
 ### 3.14.0 - 2020-09-07
