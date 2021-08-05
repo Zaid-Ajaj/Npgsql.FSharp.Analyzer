@@ -286,6 +286,29 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect """
         SELECT username, email
         FROM users
+        WHERE username IN ('foo','bar')
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "username", Expr.List([Expr.StringLiteral "foo"; Expr.StringLiteral "bar"])))
+    }
+
+    // space before `bar`
+    testSelect """
+        SELECT username, email
+        FROM users
+        WHERE username IN ('foo', 'bar')
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "username", Expr.List([Expr.StringLiteral "foo"; Expr.StringLiteral "bar"])))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
         JOIN meters ON meters.user_id = users.user_id
         LEFT JOIN utilities ON utilities.id = users.user_id
         WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
@@ -601,6 +624,14 @@ let selectQueryTests = testList "Parse SELECT tests" [
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users")
             Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Date("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        SELECT aggregate('ID', '2020-01-10', '2020-03-10', '1d')
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("aggregate", [Expr.StringLiteral "ID"; Expr.StringLiteral "2020-01-10";
+            Expr.StringLiteral "2020-03-10"; Expr.StringLiteral "1d"]) ]
     }
 
     testSelect """
