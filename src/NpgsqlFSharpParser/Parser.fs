@@ -190,7 +190,6 @@ let stringLiteral : Parser<Expr, unit> =
 
 let between' : Parser<Expr, unit> =
     attempt (
-        spaces >>.
         identifier >>= (fun value ->
         text "BETWEEN" >>.
         (integer <|> number <|> date) >>= (fun left ->
