@@ -188,6 +188,17 @@ let stringLiteral : Parser<Expr, unit> =
     spacesOrComment >>. quotedString .>> spacesOrComment
     |>> Expr.StringLiteral
 
+let between' : Parser<Expr, unit> =
+    attempt (
+        spaces >>.
+        identifier >>= (fun value ->
+        text "BETWEEN" >>.
+        (integer <|> number <|> date) >>= (fun left ->
+        text "AND" >>.
+        expr >>= (fun right ->
+            preturn (Expr.Between (value, left, right)))))
+    )
+
 /// Parses 2 or more comma separated values. I.e (1, 2), but not (3) which will become an integer.
 let numericList =
     let numeric = integer <|> number
@@ -506,6 +517,7 @@ opp.TermParser <- choice [
     (attempt declareQuery)
     (attempt fetchQuery)
     (attempt functionExpr)
+    between'
     numericList
     stringList
     (text "(") >>. expr .>> (text ")")

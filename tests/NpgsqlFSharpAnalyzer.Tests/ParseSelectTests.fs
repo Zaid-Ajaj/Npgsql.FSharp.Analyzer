@@ -687,5 +687,23 @@ let selectQueryTests = testList "Parse SELECT tests" [
                     )
                 )
     }
+
+    testSelect """
+        SELECT *
+        FROM employees
+        WHERE employee_id BETWEEN 200 AND 300;
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "employees")
+            Where =
+                Some(
+                    Expr.Between(
+                        Expr.Ident "employee_id",
+                        Expr.Integer(200L),
+                        Expr.Integer(300L)
+                    )
+                )
+    }
 ]
 
