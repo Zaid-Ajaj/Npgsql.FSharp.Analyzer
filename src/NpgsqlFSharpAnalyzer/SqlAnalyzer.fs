@@ -2,8 +2,6 @@ namespace Npgsql.FSharp.Analyzers
 
 open FSharp.Analyzers.SDK
 open System
-open System.IO
-open System.Linq
 
 module SqlAnalyzer =
 

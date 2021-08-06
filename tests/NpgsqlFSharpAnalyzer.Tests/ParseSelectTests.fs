@@ -33,8 +33,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
             Columns = [Expr.Function("NOW", [])]
     }
 
+    testSelect "SELECT (NOW())" {
+        SelectExpr.Default with
+            Columns = [Expr.Function("NOW", [])]
+    }
+
     testSelect "SELECT 1" {
-        SelectExpr.Default with Columns = [Expr.Integer 1]
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect "SELECT 36109712494634" {
+        SelectExpr.Default with Columns = [Expr.Integer 36109712494634L]
     }
 
     testSelect "SELECT ''" {
@@ -42,7 +51,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
     }
 
     testSelect "SELECT 1::text" {
-        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1, Expr.Ident "text")]
+        SelectExpr.Default with Columns = [Expr.TypeCast(Expr.Integer 1L, Expr.Ident "text")]
     }
 
     testSelect "SELECT @input::text, value::ltree" {
@@ -69,44 +78,50 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect "SELECT username, user_id FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
+    }
+
+    testSelect """SELECT * FROM "from" """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.Ident "from")
     }
 
     testSelect "SELECT * FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Star]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT DISTINCT username, user_id FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT DISTINCT ON (username, user_id) FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Ident "username"; Expr.Ident "user_id"]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT COUNT(*) FROM users" {
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT COUNT(*) AS user_count FROM users" {
         SelectExpr.Default with
             Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
-            From = Some (Expr.Ident "users") 
+            From = Some (Expr.Ident "users")
     }
 
     testSelect "SELECT ename || empno AS EmpDetails, COALESCE(comm,0) AS TOTALSAL FROM sales" {
         SelectExpr.Default with
             Columns = [
                 Expr.As(Expr.StringConcat(Expr.Ident "ename", Expr.Ident "empno"), Expr.Ident "EmpDetails")
-                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0 ]), Expr.Ident "TOTALSAL")
+                Expr.As(Expr.Function("COALESCE", [ Expr.Ident "comm"; Expr.Integer 0L ]), Expr.Ident "TOTALSAL")
             ]
 
             From = Some (Expr.Ident "sales")
@@ -115,14 +130,20 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect "SELECT COUNT(*) AS user_count FROM users as u" {
         SelectExpr.Default with
             Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
-            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u")) 
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
+    }
+
+    testSelect "SELECT COUNT(*) AS user_count FROM users u" {
+        SelectExpr.Default with
+            Columns = [Expr.As(Expr.Function("COUNT", [Expr.Star]), Expr.Ident("user_count")) ]
+            From = Some (Expr.As(Expr.Ident "users", Expr.Ident "u"))
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT 10" {
         SelectExpr.Default with
             Columns = [Expr.Function("COUNT", [Expr.Star]) ]
             From = Some (Expr.Ident "users")
-            Limit = Some(Expr.Integer 10)
+            Limit = Some(Expr.Integer 10L)
     }
 
     testSelect "SELECT COUNT(*) FROM users LIMIT @numberOfRows" {
@@ -254,6 +275,17 @@ let selectQueryTests = testList "Parse SELECT tests" [
     testSelect """
         SELECT username, email
         FROM users
+        WHERE user_id IN (1, 2, 3)
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"; Expr.Ident "email"]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.In(Expr.Ident "user_id", Expr.List([Expr.Integer 1L; Expr.Integer 2L;  Expr.Integer 3L])))
+    }
+
+    testSelect """
+        SELECT username, email
+        FROM users
         JOIN meters ON meters.user_id = users.user_id
         LEFT JOIN utilities ON utilities.id = users.user_id
         WHERE user_id IN (SELECT id FROM user_ids WHERE id IS NOT NULL)
@@ -379,7 +411,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
     }
 
     testSelect """
@@ -411,8 +443,218 @@ let selectQueryTests = testList "Parse SELECT tests" [
 
             Having = Some(Expr.GreaterThan(Expr.Function("SUM", [Expr.Ident "amount"]), Expr.Ident "users.salary"))
 
-            Limit = Some (Expr.Integer 20)
+            Limit = Some (Expr.Integer 20L)
 
-            Offset = Some (Expr.Integer 100)
+            Offset = Some (Expr.Integer 100L)
+    }
+
+    testSelect """
+        SELECT *
+        FROM (SELECT NOW()) AS time
+        LIMIT 1
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1L)
+    }
+
+    testSelect """
+        SELECT *
+        FROM
+        (SELECT NOW()) time
+        LIMIT 1
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1L)
+    }
+
+    testSelect """
+        SELECT "username" FROM "users"
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Ident "username"]
+            From = Expr.Ident "users" |> Some
+        }
+
+    testSelect """
+        SELECT "username" AS "name" FROM "users"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.As(Expr.Ident "username", Expr.Ident "name") ]
+            From = Expr.Ident "users" |> Some
+        }
+
+    testSelect """
+        SELECT "$Table"."timestamp" FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("$Table.timestamp") ]
+            From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT "$Table".timestamp AS ts FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.As(Expr.Ident("$Table.timestamp"), Expr.Ident("ts")) ]
+            From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table"
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.Ident "$Table" |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table" AS tbl
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
+        }
+
+    testSelect """
+        SELECT public."$Table"."timestamp" FROM "$Table" tbl LIMIT 100
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Ident("public.$Table.timestamp") ]
+            From = Expr.As(Expr.Ident "$Table", Expr.Ident "tbl") |> Some
+            Limit = Some (Expr.Integer 100L)
+        }
+
+    testSelect "SELECT 1 -- This is a comment" {
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect """
+        -- This is a comment
+        SELECT 1""" {
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect """
+        /* Comment inserted first */
+        SELECT 1""" {
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect """
+        SELECT 1
+        /* Comment inserted last */
+        """ {
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect """
+        SELECT 1;
+        /* Comment inserted after semicolon */
+        """ {
+        SelectExpr.Default with Columns = [Expr.Integer 1L]
+    }
+
+    testSelect """
+        SELECT * /* Comment inserted here */
+        FROM -- Ignore
+        (SELECT NOW()) time /* Comment inserted here */
+        LIMIT 1 -- Ignore
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.As (Expr.SelectQuery {
+                SelectExpr.Default with
+                    Columns = [Expr.Function ("NOW", [])]
+            }, Expr.Ident "time"))
+            Limit = Some (Expr.Integer 1L)
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > TIMESTAMP '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Timestamp("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        SELECT
+        COUNT(*)
+        FROM users
+        WHERE last_login > DATE '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Function("COUNT", [Expr.Star]) ]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.GreaterThan(Expr.Ident "last_login", Expr.Date("2021-01-04 00:00:00")))
+    }
+
+    testSelect """
+        select timestamp '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Timestamp("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        select date '2021-01-04 00:00:00'
+    """ {
+        SelectExpr.Default with
+            Columns = [Expr.Date("2021-01-04 00:00:00") ]
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{12378169571900,36109712494634,54795035045033}'::bigint[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{12378169571900,36109712494634,54795035045033}",
+                                Expr.DataType(DataType.Array(DataType.BigInt, None))
+                            )
+                        )
+                    )
+                )
+    }
+
+    testSelect """
+        SELECT * FROM users WHERE id = ANY ('{1.1,361097124946,34,54795035045033.34}'::double precision[])
+    """ {
+        SelectExpr.Default with
+            Columns = [ Expr.Star ]
+            From = Some (Expr.Ident "users")
+            Where =
+                Some(
+                    Expr.Equals(
+                        Expr.Ident "id",
+                        Expr.Any(
+                            Expr.TypeCast(
+                                Expr.StringLiteral "{1.1,361097124946,34,54795035045033.34}",
+                                Expr.DataType(DataType.Array(DataType.Double, None))
+                            )
+                        )
+                    )
+                )
     }
 ]
+

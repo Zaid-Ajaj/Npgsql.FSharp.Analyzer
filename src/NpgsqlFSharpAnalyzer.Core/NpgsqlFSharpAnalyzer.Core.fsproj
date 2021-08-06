@@ -13,9 +13,9 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="F23.StringSimilarity" Version="3.1.0" />
-        <PackageReference Include="FSharp.Compiler.Service" Version="36.0.3" />
+        <PackageReference Include="FSharp.Compiler.Service" Version="39.0.0" />
+        <PackageReference Update="FSharp.Core" Version="5.0.1" />
         <PackageReference Include="Npgsql" Version="4.1.3" />
-        <PackageReference Update="FSharp.Core" Version="4.7.2" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\NpgsqlFSharpParser\NpgsqlFSharpParser.fsproj" />

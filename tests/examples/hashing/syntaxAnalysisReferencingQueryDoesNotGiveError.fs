@@ -2,7 +2,8 @@ module SyntaxAnalysisReferencingQueryDoesNotGiveError
 
 open Npgsql
 open Npgsql.FSharp
-// this shouldn't be analyzed whe n query is dynamic
+
+// this shouldn't be analyzed when query is dynamic
 
 let deleteUsers connection =
     

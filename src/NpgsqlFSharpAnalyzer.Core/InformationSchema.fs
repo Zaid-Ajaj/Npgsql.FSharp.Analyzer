@@ -375,26 +375,29 @@ module InformationSchema =
                 | -1s -> ()
                 | attnum ->
                     let udtName = string row.["col_udt_name"]
+                    let isArray = string row.["col_data_type"] = "ARRAY"
+                    let dataType = if isArray then udtName.TrimStart('_') else udtName
                     let isUdt =
                         schemas.[schema.Name].Enums
-                        |> Map.tryFind udtName
+                        |> Map.tryFind dataType
                         |> Option.isSome
 
                     let clrType =
                         match string row.["col_data_type"] with
                         | "ARRAY" ->
-                            let elemType = getTypeMapping(udtName.TrimStart('_') )
-                            elemType.MakeArrayType()
+                            if not isUdt then
+                                let elemType = getTypeMapping(dataType)
+                                elemType.MakeArrayType()
+                            else typeof<string>.MakeArrayType()
                         | "USER-DEFINED" ->
                             if isUdt then typeof<string> else typeof<obj>
                         | dataType ->
                             getTypeMapping(dataType)
 
                     let column =
-                        let isArray = string row.["col_data_type"] = "ARRAY"
                         { ColumnAttributeNumber = attnum
                           Name = string row.["col_name"]
-                          DataType = { Name = if isArray then udtName.TrimStart('_') else udtName
+                          DataType = { Name = dataType
                                        Schema = schema.Name
                                        IsArray = isArray
                                        ClrType = clrType }

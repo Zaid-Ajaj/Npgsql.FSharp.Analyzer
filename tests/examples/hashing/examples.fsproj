@@ -5,6 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="MultipleNestedModules.fsx" />
+    <Compile Include="MultipleNestedModules.fs" />
+    <Compile Include="usingProcessedParameters.fs" />
+    <Compile Include="castingNonNullableStaysNonNullable.fs" />
+    <Compile Include="syntacticAnalysisFromLambdaBody.fs" />
+    <Compile Include="syntacticAnalysisFromSingleCaseUnion.fs" />
+    <Compile Include="topLevelExpressionIsDetected.fs" />
     <Compile Include="usingLiteralQueriesWithTransactions.fs" />
     <Compile Include="detectingDynamicListsInTransactions.fs" />
     <Compile Include="detectingEmptyParameterSet.fs" />
@@ -34,8 +41,10 @@
     <Compile Include="syntacticAnalysis.fs" />
   </ItemGroup>
 
+  <ItemGroup />
+
   <ItemGroup>
-    <PackageReference Include="Npgsql.FSharp" Version="3.7.0" />
+    <PackageReference Include="Npgsql.FSharp" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

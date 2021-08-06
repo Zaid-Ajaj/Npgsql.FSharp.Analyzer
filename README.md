@@ -16,13 +16,14 @@ Analyzer that provides embedded **SQL syntax analysis** when writing queries usi
 - Free (MIT licensed)
 - Supports VS Code with [Ionide](https://github.com/ionide/ionide-vscode-fsharp) via F# Analyzers SDK
 - Supports Visual Studio
+- Supports CLI (via Ubik)
 
 ## NuGet
 
 | Package              | Stable                                                                                                                     | Prerelease                                                                                                                                         |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NpgsqlFSharpAnalyzer | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) | [![NuGet Badge](https://buildstats.info/nuget/NpgsqlFSharpAnalyzer?includePreReleases=true)](https://www.nuget.org/packages/NpgsqlFSharpAnalyzer/) |
-
+| Ubik | [![NuGet Badge](https://buildstats.info/nuget/Ubik)](https://www.nuget.org/packages/Ubik/) | [![NuGet Badge](https://buildstats.info/nuget/Ubik?includePreReleases=true)](https://www.nuget.org/packages/Ubik/) |
 
 ## Using The Analyzer (Visual Studio) 
 
@@ -54,12 +55,19 @@ Another way to configure the connection string is by setting the value of an env
 
 The analyzer will try to locate and read the file first, then falls back to using the environment variable.
 
-### 2 - Install the analyzer using paket
+### 2 - Install the analyzer using
+
+#### a. paket
 Use paket to install the analyzer into a specialized `Analyzers` dependency group like this:
 ```
 paket add NpgsqlFSharpAnalyzer --group Analyzers
 ```
 **DO NOT** use `storage:none` because we want the analyzer package to be downloaded physically into `packages/analyzers` directory.
+
+#### b. nuget
+```
+nuget install NpgsqlFSharpAnalyzer -OutputDirectory packages/analyzers
+```
 
 ### 3 - Enable analyzers in Ionide
 Make sure you have these settings in Ionide for FSharp
@@ -72,6 +80,35 @@ Make sure you have these settings in Ionide for FSharp
 }
 ```
 Which instructs Ionide to load the analyzers from the directory of the analyzers into which `NpgsqlFSharpAnalyzer` was installed.
+
+# Using CLI with Ubik
+
+### 1 - Configure the connection string to your development database
+The analyzer requires a connection string that points to the database you are developing against. You can configure this connection string by either creating a file called `NPGSQL_FSHARP` (without extension) somewhere next to your F# project or preferably in the root of your workspace. This file should contain that connection string and nothing else. An example of the contents of such file:
+```
+Host=localhost; Username=postgres; Password=postgres; Database=databaseName
+```
+> Remember to add an entry in your .gitingore file to make sure you don't commit the connection string to your source version control system.
+
+Another way to configure the connection string is by setting the value of an environment variable named `NPGSQL_FSHARP` that contains the connection string.
+
+The analyzer will try to locate and read the file first, then falls back to using the environment variable.
+
+### 2 - Install Ubik as a dotnet CLI tool
+```
+dotnet tool install ubik --global
+```
+### 3 - Run Ubik in the directory of the project you want to analyze
+```bash
+cd ./path/to/project
+ubik
+
+ubik ./path/to/Project.fsproj
+
+ubik ./File1.fs ./AnotherFile.fs
+
+ubik --version
+```
 
 ### Writing Long Multi-line Queries
 

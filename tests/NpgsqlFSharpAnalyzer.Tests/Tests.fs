@@ -38,7 +38,7 @@ let tests =
             | None -> failwith "Could not crack project"
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlOperations context
-                Expect.equal 10 (List.length operationBlocks) "Found ten operation blocks"
+                Expect.equal (List.length operationBlocks) 15 "Found 15 operation blocks"
         }
 
         test "Syntactic analysis: no SQL blocks should be found using sprintf" {
@@ -47,6 +47,94 @@ let tests =
             | Some context ->
                 let operations = SyntacticAnalysis.findSqlOperations context
                 Expect.isEmpty operations "There should be no syntactic blocks"
+        }
+
+        test "Syntactic Analysis: finding processed parameters" {
+            match context (find "../examples/hashing/usingProcessedParameters.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operationBlocks = SyntacticAnalysis.findSqlOperations context
+                Expect.equal (List.length operationBlocks) 1 "Found 1 operation"
+                let parameters = 
+                    [
+                        for operation in operationBlocks do
+                        for block in operation.blocks do
+                            match block with
+                            | SqlAnalyzerBlock.Parameters (parameters, _) ->
+                                yield! parameters
+                            | _ ->
+                                ()
+                    ]
+
+                Expect.equal 2 parameters.Length "There are 2 parameters"
+        }
+
+        test "Semantic analysis: finding SQL blocks in multiple nested modules which query a non-public schema" {
+            use db = createTestDatabase()
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE EXTENSION IF NOT EXISTS citext;CREATE SCHEMA test; CREATE TABLE test.articles (id BIGINT PRIMARY KEY NOT NULL,art_name CITEXT UNIQUE NOT NULL, stock BIGINT NOT NULL);"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/MultipleNestedModules.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let errors = SqlAnalysis.analyzeOperation operations.[0] db.ConnectionString schema
+                    Expect.equal 1 errors.Length "There should be one error message"
+                    Expect.stringContains errors.[0].Message "column \"x\" does not exist" "There should be an error message"
+        }
+
+        test "Semantic analysis using FSX: finding SQL blocks in multiple nested modules which query a non-public schema" {
+            use db = createTestDatabase()
+            
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE EXTENSION IF NOT EXISTS citext;CREATE SCHEMA test; CREATE TABLE test.articles (id BIGINT PRIMARY KEY NOT NULL,art_name CITEXT UNIQUE NOT NULL, stock BIGINT NOT NULL);"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/MultipleNestedModules.fsx") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let errors = SqlAnalysis.analyzeOperation operations.[0] db.ConnectionString schema
+                    Expect.equal 1 errors.Length "There should be one error message"
+                    Expect.stringContains errors.[0].Message "column \"x\" does not exist" "There should be an error message"
+        }
+
+        test "Syntactic analysis: SQL block found from top-level expression in module" {
+            match context (find "../examples/hashing/topLevelExpressionIsDetected.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+        }
+
+        test "Syntactic analysis: SQL block found from lambda body" {
+            match context (find "../examples/hashing/syntacticAnalysisFromLambdaBody.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
+        }
+
+        test "Syntactic analysis: SQL block found from lambda body wrapped in single case union" {
+            match context (find "../examples/hashing/syntacticAnalysisFromSingleCaseUnion.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                let operations = SyntacticAnalysis.findSqlOperations context
+                Expect.equal 1 operations.Length "There should be one syntactic block found"
         }
 
         test "Syntactic Analysis: reading queries with [<Literal>] query" {
@@ -246,7 +334,27 @@ let tests =
                     Expect.isEmpty messages "No errors returned"
         }
 
-        test "Semantic analysis: incorrect queries in executeTranscation are detected" {
+        test "Semantic analysis: casting non-nullable columns stays non-nullable" {
+            use db = createTestDatabase()
+
+            Sql.connect db.ConnectionString
+            |> Sql.query "CREATE TABLE users (user_id bigserial primary key, username text not null)"
+            |> Sql.executeNonQuery
+            |> raiseWhenFailed
+
+            match context (find "../examples/hashing/castingNonNullableStaysNonNullable.fs") with
+            | None -> failwith "Could not crack project"
+            | Some context ->
+                match SqlAnalysis.databaseSchema db.ConnectionString with
+                | Result.Error connectionError ->
+                    failwith connectionError
+                | Result.Ok schema ->
+                    let blocks = SyntacticAnalysis.findSqlOperations context
+                    let messages = blocks |> List.collect (fun block -> SqlAnalysis.analyzeOperation block db.ConnectionString schema)
+                    Expect.isEmpty messages "No errors returned"
+        }
+
+        test "Semantic analysis: incorrect queries in executeTransaction are detected" {
             use db = createTestDatabase()
 
             Sql.connect db.ConnectionString
@@ -384,6 +492,33 @@ let tests =
                 Expect.equal rolesColumn.DataType.Name "text" "The data type is text"
                 Expect.isTrue rolesColumn.DataType.IsArray "The data type is an array"
                 Expect.isFalse rolesColumn.Nullable "The column is not nullable"
+        }
+
+        test "SQL schema analysis with user defined arrays" {
+            use db = createTestDatabase ()
+  
+            Sql.connect db.ConnectionString
+            |> Sql.executeTransaction [
+                "CREATE TYPE role AS ENUM ('admin')", []
+                "CREATE TABLE users (roles role[])", [] ]
+            |> raiseWhenFailed
+  
+            let databaseMetadata =
+                InformationSchema.getDbSchemaLookups db.ConnectionString
+  
+            let userColumns =
+                databaseMetadata.Schemas.["public"].Tables
+                |> Seq.tryFind (fun pair -> pair.Key.Name = "users")
+                |> Option.map (fun pair -> pair.Value)
+                |> Option.map List.ofSeq
+  
+            match userColumns with
+            | None -> failwith "Expected to find columns for users table"
+            | Some columns ->
+                Expect.equal 1 (List.length columns) "There is one column"
+                let rolesColumn = columns |> List.find (fun column -> column.Name = "roles")
+                Expect.equal rolesColumn.DataType.Name "role" "The data type is role"
+                Expect.isTrue rolesColumn.DataType.IsArray "The data type is an array"
         }
 
         test "SQL query analysis" {

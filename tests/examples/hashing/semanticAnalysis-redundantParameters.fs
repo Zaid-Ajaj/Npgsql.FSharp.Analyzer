@@ -1,7 +1,6 @@
 module semanticAnalysis_redundantParameters
 
 open Npgsql.FSharp
-open Npgsql.FSharp.OptionWorkflow
 
 let connectionString = "Dummy connection string"
 

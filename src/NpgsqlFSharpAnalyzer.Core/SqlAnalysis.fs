@@ -1,7 +1,7 @@
 namespace Npgsql.FSharp.Analyzers.Core
 
 open System
-open FSharp.Compiler.Range
+open FSharp.Compiler.Text
 open F23.StringSimilarity
 open NpgsqlFSharpParser
 open InformationSchema
@@ -343,12 +343,78 @@ module SqlAnalysis =
             | _ ->
                 None
 
+    // When casting columns during a select statement, if the original column is non-nullable
+    // then the computed column somehow becomes nullable when we ask the database for its type
+    // for example
+    //      user_id int not null -> inferred non-nullable
+    //      user_id::text -> inferred nullable
+    //
+    // This function resolves the correct nullability and infers non-nullable columns to be returned as such 
+    let resolveColumnNullability (commandText: string) (schema: DbSchemaLookups) (columns: Column list) =
+        match Parser.parse commandText with
+        | Result.Ok (Expr.SelectQuery selectQuery) ->
+            let schemaColumns =
+                schema.Columns
+                |> Seq.map (fun pair -> pair.Value)
+                |> Seq.toList
+
+            columns
+            |> List.map (fun column ->
+                let originalColumnNameAndAlias =
+                    selectQuery.Columns
+                    |> List.tryPick (function
+                        // find columns expressions of the shape
+                        // {originalName}::{typeName} AS {alias}
+                        | Expr.As(Expr.TypeCast(Expr.Ident originalName, Expr.Ident typeName), Expr.Ident alias) ->
+                            Some (originalName, alias, false)
+                        // 1::{typeName} AS {alias}
+                        | Expr.As(Expr.TypeCast(Expr.Integer _, Expr.Ident typeName), Expr.Ident alias) ->
+                            Some (column.Name, column.Name, true)
+                        // {originalName}::{typeName}
+                        | Expr.TypeCast(Expr.Ident originalName, Expr.Ident typeName) ->
+                            Some (originalName, originalName, false)
+                        // 1::{typeName}
+                        | Expr.TypeCast(Expr.Integer _, Expr.Ident typeName) ->
+                            Some (column.Name, column.Name, true)
+                        // "text"::{typeName}
+                        | Expr.TypeCast(Expr.StringLiteral _, Expr.Ident typeName) ->
+                            Some (column.Name, column.Name, true)
+                        // 1 as {alias}
+                        | Expr.As(Expr.Integer _, Expr.Ident alias) ->
+                            Some (alias, alias, true)
+                        // "text" AS alias
+                        | Expr.As(Expr.StringLiteral _, Expr.Ident alias) ->
+                            Some (alias, alias, true)
+                        | _ ->
+                            None 
+                    )
+
+                match originalColumnNameAndAlias with
+                | None -> column
+                | Some (name, alias, isConst) when isConst-> { column with Nullable = false }
+                | Some (name, alias, isConst) ->
+                    schemaColumns
+                    |> List.tryFind (fun columnSchema -> columnSchema.Name = name && alias = column.Name)
+                    |> function
+                        | None -> column
+                        | Some columnSchema ->
+                            { column with
+                                Nullable = columnSchema.Nullable
+                                DefaultConstraint = columnSchema.DefaultConstraint
+                                PartOfPrimaryKey = columnSchema.PartOfPrimaryKey
+                                BaseTableName = column.BaseTableName
+                                BaseSchemaName = column.BaseSchemaName }
+            )
+        | _ ->
+            columns
+
     let extractParametersAndOutputColumns(connectionString, commandText, dbSchemaLookups) =
         try
             let parameters, output, enums = InformationSchema.extractParametersAndOutputColumns(connectionString, commandText, false, dbSchemaLookups)
             let parametersWithNullability = determineParameterNullability parameters dbSchemaLookups commandText
             let potentiallyMissingColumns = missingInsertColumns dbSchemaLookups commandText
-            Result.Ok (parametersWithNullability, output, potentiallyMissingColumns)
+            let rewrittenColumns = resolveColumnNullability commandText dbSchemaLookups output
+            Result.Ok (parametersWithNullability, rewrittenColumns, potentiallyMissingColumns)
         with
         | :? PostgresException as databaseError ->
             // errors such as syntax errors are reported here
@@ -875,15 +941,15 @@ module SqlAnalysis =
                                 else ()
 
                             | ("timestamptz"|"timestamp with time zone") ->
-                                if column.Nullable && notUsing "timestamptzOrNone" && notUsing "dateTimeOrNone"
-                                then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
+                                if column.Nullable && notUsing "timestamptzOrNone" && notUsing "dateTimeOrNone" && notUsing "datetimeOffsetOrNone"
+                                then yield typeMismatch [ replace "datetimeOffsetOrNone"; replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
                                 //else if not column.Nullable && (using "timestamptzOrNone" || using "dateTimeOrNone")
                                 //then yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
-                                else if notUsing "timestamptzOrNone" && notUsing "timestamptz" && notUsing "dateTimeOrNone" && notUsing "dateTime"
+                                else if notUsing "timestamptzOrNone" && notUsing "timestamptz" && notUsing "dateTimeOrNone" && notUsing "dateTime" && notUsing "datetimeOffsetOrNone" && notUsing "datetimeOffset"
                                 then
                                     if column.Nullable
-                                    then yield typeMismatch [ replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
-                                    else yield typeMismatch [ replace "dateTime"; replace "timestamptz" ]
+                                    then yield typeMismatch [ replace "datetimeOffsetOrNone"; replace "dateTimeOrNone"; replace "timestamptzOrNone" ]
+                                    else yield typeMismatch [ replace "datetimeOffset"; replace "dateTime"; replace "timestamptz" ]
                                 else ()
 
                             | "bytea" ->

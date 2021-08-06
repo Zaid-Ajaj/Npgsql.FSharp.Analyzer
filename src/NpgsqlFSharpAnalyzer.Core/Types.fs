@@ -1,7 +1,6 @@
 namespace Npgsql.FSharp.Analyzers.Core
 
-open FSharp.Compiler.Range
-
+open FSharp.Compiler.Text
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.SourceCodeServices
 
@@ -68,7 +67,20 @@ type SqlAnalyzerBlock =
     | Parameters of UsedParameter list *  range
     | ReadingColumns of ColumnReadAttempt list
     | Transaction of TransactionQuery list
-    | SkipAnalysis 
+    | SkipAnalysis
+
+    member this.Range() =
+        match this with
+        | Query(value, range) -> Some range
+        | LiteralQuery(id, range) -> Some range
+        | StoredProcedure(name, range) -> Some range
+        | Parameters(parameterList, range) -> Some range
+        | Transaction(queries) ->
+            queries
+            |> List.tryHead
+            |> Option.map (fun query -> query.queryRange)
+        | _ ->
+            None
 
 type SqlOperation = {
     blocks : SqlAnalyzerBlock list

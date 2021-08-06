@@ -2,14 +2,18 @@ namespace rec NpgsqlFSharpParser
 
 [<RequireQualifiedAccess>]
 type Expr =
+    | Array of Expr list
+    | List of Expr list
     | Null
     | Star
     | Ident of string
     | Parameter of string
     | Boolean of bool
     | StringLiteral of string
-    | Integer of int
+    | Integer of int64
     | Float of float
+    | Date of string
+    | Timestamp of string
     | Function of name:string * arguments:Expr list
     | And of left:Expr * right:Expr
     | Or of left:Expr * right:Expr
@@ -18,7 +22,9 @@ type Expr =
     | StringConcat of left:Expr * right:Expr
     | JsonIndex of left:Expr * right:Expr
     | TypeCast of left:Expr * right:Expr
+    | DataType of DataType
     | Not of expr:Expr
+    | Any of expr:Expr
     | Equals of left:Expr * right:Expr
     | GreaterThan of left:Expr * right:Expr
     | LessThan of left:Expr * right:Expr
@@ -29,6 +35,8 @@ type Expr =
     | DeleteQuery of expr:DeleteExpr
     | InsertQuery of expr: InsertExpr
     | UpdateQuery of expr: UpdateExpr
+    | SetQuery of expr: SetExpr
+    | DeclareQuery of expr: DeclareExpr
 
 type Ordering =
     | Asc of columnName:string
@@ -110,3 +118,63 @@ type InsertExpr = {
             ConflictResolution = [ ]
             Returning = [ ]
         }
+
+type Scope =
+    | Local
+    | Session
+
+type SetExpr = {
+    Parameter: string
+    Value: Expr option
+    Scope: Scope
+} with
+    static member Default =
+        {
+            Parameter = "";
+            Value = None
+            Scope = Session
+        }
+
+type CursorDeclaration = {
+    Parameter: string
+    Query: Expr
+} with
+    static member Default =
+        {
+            Parameter = "";
+            Query = Expr.Null
+        }
+
+type DeclareExpr =
+    | Cursor of CursorDeclaration
+
+[<RequireQualifiedAccess>]
+type DataType =
+    | Integer
+    | BigInt
+    | SmallInt
+    | Real
+    | Double
+    | Array of dataType:DataType * size:int option
+
+    static member TryFromString(valueType: string, ?isArray: bool, ?arraySize: int) : DataType option =
+        let dType =
+            match valueType.ToUpper () with
+            | "INT2"
+            | "SMALLINT" -> Some SmallInt
+            | "INT"
+            | "INT4"
+            | "INTEGER" -> Some Integer
+            | "INT8"
+            | "BIGINT" -> Some BigInt
+            | "FLOAT4"
+            | "REAL" -> Some Real
+            | "FLOAT8"
+            | "DOUBLE PRECISION" -> Some Double
+            | _ -> None
+
+        let isArray = isArray |> Option.bind (function | false -> None | _ -> Some true) // Note: Some false -> None.
+
+        dType
+        |> Option.bind (fun t -> isArray |> Option.map (fun _ -> Array(dataType=t, size=arraySize)))
+        |> Option.orElse dType

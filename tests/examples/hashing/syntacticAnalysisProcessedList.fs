@@ -1,7 +1,6 @@
 module semanticAnalysisProcessedList
 
 open Npgsql.FSharp
-open Npgsql.FSharp.OptionWorkflow
 
 let connectionString = "Dummy connection string"
 
@@ -10,6 +9,7 @@ let findUsernames() =
     |> Sql.connect
     |> Sql.query "SELECT * FROM users"
     |> Sql.execute (fun read -> read.text "username")
+    |> Ok
     |> function
         | Error error -> None 
         | Ok users -> Some users

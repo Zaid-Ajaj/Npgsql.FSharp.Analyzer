@@ -2,7 +2,7 @@ namespace Npgsql.FSharp.Analyzers.Core
 
 open FSharp.Compiler.SourceCodeServices
 open FSharp.Compiler.SyntaxTree
-open FSharp.Compiler.Range
+open FSharp.Compiler.Text
 
 module SyntacticAnalysis =
 
@@ -54,6 +54,8 @@ module SyntacticAnalysis =
     let (|ParameterTuple|_|) = function
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); Apply(funcName, exprArgs, funcRange, appRange) ], commaRange, tupleRange) ->
             Some (parameterName, paramRange, funcName, funcRange, Some appRange)
+        | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); SynExpr.Paren(Apply(funcName, exprArgs, funcRange, appRange), leftParenRange, rightParenRange, _) ], commaRange, tupleRange) ->
+            Some (parameterName, paramRange, funcName, funcRange, Some appRange)
         | SynExpr.Tuple(isStruct, [ SynExpr.Const(SynConst.String(parameterName, paramRange), constRange); secondItem ], commaRange, tupleRange) ->
             match secondItem with
             | SynExpr.LongIdent(isOptional, longDotId, altName, identRange) ->
@@ -65,9 +67,27 @@ module SyntacticAnalysis =
                         |> String.concat "."
 
                     Some (parameterName, paramRange, fullName, identRange, None)
-            | _ ->
+            | Apply(funcName, innerArg, funcRange, appRange) ->
+                Some (parameterName, paramRange, funcName, funcRange, None)
+
+            | SynExpr.App(flag, inFix, funcExpr, argExpr, fullAppRange) ->
+                match argExpr with
+                | SynExpr.LongIdent(isOptional, longDotId, altName, identRange) ->
+                    match longDotId with
+                    | LongIdentWithDots(listOfIds, ranges) ->
+                        let fullName =
+                            listOfIds
+                            |> List.map (fun id -> id.idText)
+                            |> String.concat "."
+
+                        Some (parameterName, paramRange, fullName, identRange, None)
+                | Apply(funcName, innerArg, funcRange, appRange) ->
+                    Some (parameterName, paramRange, funcName, funcRange, None)
+                | otherwise ->
+                    None
+            | otherwise ->
                 None
-        | _ ->
+        | otherwise ->
             None
 
     let rec readParameters = function
@@ -75,6 +95,8 @@ module SyntacticAnalysis =
             [ name, range, func, funcRange, appRange ]
         | SynExpr.Sequential(_debugSeqPoint, isTrueSeq, expr1, expr2, seqRange) ->
             [ yield! readParameters expr1; yield! readParameters expr2 ]
+        | SynExpr.Paren(ParameterTuple (name, range, func, funcRange, appRange), _, _, _) ->
+            [ name, range, func, funcRange, appRange ]
         | _ ->
             [ ]
 
@@ -89,9 +111,9 @@ module SyntacticAnalysis =
             match listExpr with
             | SynExpr.CompExpr(isArrayOfList, isNotNakedRefCell, compExpr, compRange) ->
                 Some (readParameters compExpr, compRange)
-            | _ ->
+            | otherwise ->
                 None
-        | _ ->
+        | otherwise ->
             None
 
     let readParameterSets parameterSetsExpr =
@@ -125,7 +147,7 @@ module SyntacticAnalysis =
                                                 range = range
                                                 applicationRange = appRange
                                             }
-                                        | _ ->
+                                        | otherwise ->
                                             ()
                                 ]
 
@@ -146,7 +168,7 @@ module SyntacticAnalysis =
                                             range = range
                                             applicationRange = appRange
                                         }
-                                    | _ ->
+                                    | otherwise ->
                                         ()
                             ]
 
@@ -240,7 +262,7 @@ module SyntacticAnalysis =
             }
 
             Some transaction
-        | _ ->
+        | otherwise ->
             None
 
     let rec readTransactionQueries = function
@@ -261,7 +283,13 @@ module SyntacticAnalysis =
                 Some (readTransactionQueries compExpr)
             | _ ->
                 None
-        | _ ->
+        | Apply (("Sql.executeTransaction"|"Sql.executeTransactionAsync"), SynExpr.ArrayOrList(isList, listExpr, range), funcRange, appRange) ->
+            let expressions =
+                listExpr
+                |> List.collect readTransactionQueries
+
+            Some expressions
+        | otherwise ->
             None
 
     let (|ReadColumnAttempt|_|) = function
@@ -305,6 +333,8 @@ module SyntacticAnalysis =
                     ".dateOrNone"
                     ".dateTime"
                     ".dateTimeOrNone"
+                    ".datetimeOffset"
+                    ".datetimeOffsetOrNone"
                     ".intArray"
                     ".intArrayOrNone"
                     ".stringArray"
@@ -380,7 +410,7 @@ module SyntacticAnalysis =
         | SynExpr.App(exprAtomic, isInfix, funcExpr, argExpr, range) ->
             [ yield! findParameters funcExpr; yield! findParameters argExpr ]
 
-        | _ ->
+        | otherwise ->
             [ ]
 
     let rec findExecuteTransaction = function
@@ -404,7 +434,7 @@ module SyntacticAnalysis =
             [ yield! findReadColumnAttempts funcExpr; yield! findReadColumnAttempts argExpr ]
         | SynExpr.Paren(expr, leftRange, rightRange, range) ->
             [ yield! findReadColumnAttempts expr ]
-        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, range) ->
+        | SynExpr.Lambda(fromMethod, inLambdaSeq, args, body, parsedData, range) ->
             [ yield! findReadColumnAttempts body ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
              [ yield! findReadColumnAttempts body
@@ -462,7 +492,7 @@ module SyntacticAnalysis =
                 | None -> ()
             ]
 
-        | SynExpr.Lambda(_, _, args, body, range) ->
+        | SynExpr.Lambda(_, _, args, body, parsedData, range) ->
             [
                 yield! findReadColumnAttempts body
             ]
@@ -510,6 +540,8 @@ module SyntacticAnalysis =
     let rec visitSyntacticExpression (expr: SynExpr) (fullExpressionRange: range) =
         match expr with
         | SynExpr.CompExpr(isArrayOrList, _, innerExpr, range) ->
+            visitSyntacticExpression innerExpr range
+        | SynExpr.Typed(innerExpr, returnType, range) ->
             visitSyntacticExpression innerExpr range
         | SynExpr.YieldOrReturn(_, innerExpr, innerRange) ->
             visitSyntacticExpression innerExpr innerRange
@@ -588,6 +620,7 @@ module SyntacticAnalysis =
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
                     yield! findSkipAnalysis funcExpr
+                    yield! findExecuteTransaction funcExpr
                 ]
 
                 [ { blocks = blocks; range = range; } ]
@@ -597,6 +630,7 @@ module SyntacticAnalysis =
                     yield! findFunc funcExpr
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
+                    yield! findExecuteTransaction funcExpr
                     yield SqlAnalyzerBlock.SkipAnalysis
                     yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
@@ -609,10 +643,13 @@ module SyntacticAnalysis =
                     yield! findQuery funcExpr
                     yield! findParameters funcExpr
                     yield! findSkipAnalysis funcExpr
+                    yield! findExecuteTransaction funcExpr
                     yield SqlAnalyzerBlock.ReadingColumns (findReadColumnAttempts funcExpr)
                 ]
 
                 [ { blocks = blocks; range = range; } ]
+            | SynExpr.Paren(innerExpr, leftRange, rightRange, range) ->
+                visitSyntacticExpression innerExpr range
             | _ ->
                 [ ]
         | SynExpr.LetOrUse(isRecursive, isUse, bindings, body, range) ->
@@ -639,6 +676,15 @@ module SyntacticAnalysis =
                 | Some expr -> yield! visitSyntacticExpression expr range
             ]
 
+        | SynExpr.Lambda (fromMethod, inSeq, args, body, parsedData, range) ->
+            visitSyntacticExpression body range
+
+        | SynExpr.Sequential (debugSeqPoint, isTrueSeq, expr1, expr2, range) ->
+            [
+                yield! visitSyntacticExpression expr1 range
+                yield! visitSyntacticExpression expr2 range
+            ]
+
         | otherwise ->
             [ ]
 
@@ -649,7 +695,7 @@ module SyntacticAnalysis =
 
     let findLiterals (ctx: SqlAnalyzerContext) =
         let values = new ResizeArray<string * string>()
-        for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues) do
+        for symbol in ctx.Symbols |> Seq.collect (fun s -> s.TryGetMembersFunctionsAndValues()) do
             match symbol.LiteralValue with
             | Some value when value.GetType() = typeof<string> ->
                 values.Add((symbol.LogicalName, unbox<string> value))
@@ -736,6 +782,8 @@ module SyntacticAnalysis =
                                 | SynModuleDecl.Types(definitions, range)  ->
                                     iterTypeDefs definitions
 
+                                | SynModuleDecl.DoExpr(debugInfo, expression, range) ->
+                                    operations.AddRange (visitSyntacticExpression expression range)
                                 | _ ->
                                     ()
 

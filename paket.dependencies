@@ -1,20 +1,19 @@
 source https://www.nuget.org/api/v2
 source https://api.nuget.org/v3/index.json
 storage: none
+lowest_matching: true
 clitool dotnet-mono 0.5.2
-nuget FSharp.Core
 nuget Microsoft.SourceLink.GitHub prerelease copy_local: true
 nuget Microsoft.NETFramework.ReferenceAssemblies copy_local: true
 nuget Expecto 8.13.1
 nuget YoloDev.Expecto.TestSdk 0.8.0
 nuget Microsoft.NET.Test.Sdk 15.7.2
 nuget altcover ~> 6
-nuget FSharp.Analyzers.SDK 0.5.0
+nuget FSharp.Analyzers.SDK 0.8.0
 nuget Npgsql
 nuget ThrowawayDb.Postgres
-nuget Npgsql.FSharp
+nuget Npgsql.FSharp ~> 4.0
 nuget F23.StringSimilarity
-nuget FParsec 1.1.1
 
 // [ FAKE GROUP ]
 group Build

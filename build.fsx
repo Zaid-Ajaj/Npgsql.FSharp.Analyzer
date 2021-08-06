@@ -270,7 +270,7 @@ let dotnetPack ctx =
     if exitCode <> 0 then
         failwith "dotnet pack failed"
     else
-        match Shell.Exec("dotnet", "publish -c Release --framework netcoreapp2.0", "src" </> "NpgsqlFSharpAnalyzer") with
+        match Shell.Exec("dotnet", "publish -c Release --framework net5.0", "src" </> "NpgsqlFSharpAnalyzer") with
         | 0 ->
             let nupkg =
                 System.IO.Directory.GetFiles(__SOURCE_DIRECTORY__ </> "dist")
@@ -280,7 +280,7 @@ let dotnetPack ctx =
             let nugetParent = DirectoryInfo(nupkg).Parent.FullName
             let nugetFileName = IO.Path.GetFileNameWithoutExtension(nupkg)
 
-            let publishPath = "src" </> "NpgsqlFSharpAnalyzer" </> "bin" </> "Release" </> "netcoreapp2.0" </> "publish"
+            let publishPath = "src" </> "NpgsqlFSharpAnalyzer" </> "bin" </> "Release" </> "net5.0" </> "publish"
             ZipFile.ExtractToDirectory(nupkg, nugetParent </> nugetFileName)
             let nuspecFile = nugetParent </> nugetFileName </> "NpgsqlFSharpAnalyzer.nuspec"
             // rewriteNuspec
@@ -293,8 +293,8 @@ let dotnetPack ctx =
             |> fun content -> File.WriteAllLines(nuspecFile, content)
 
             File.Delete nupkg
-            Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0")
-            Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "netcoreapp2.0") publishPath (fun _ -> true)
+            Shell.deleteDir (nugetParent </> nugetFileName </> "lib" </> "net5.0")
+            Shell.copyDir (nugetParent </> nugetFileName </> "lib" </> "net5.0") publishPath (fun _ -> true)
             ZipFile.CreateFromDirectory(nugetParent </> nugetFileName, nupkg)
             Shell.deleteDir(nugetParent </> nugetFileName)
         | _ ->
@@ -315,6 +315,21 @@ let publishToNuget _ =
     if exitCode <> 0
     then failwith "Could not publish package"
 
+let packUbik _ =
+    Shell.cleanDir (__SOURCE_DIRECTORY__ </> "dist")
+    let args =
+        [
+            "pack"
+            "--configuration Release"
+            sprintf "--output %s" (__SOURCE_DIRECTORY__ </> "dist")
+        ]
+
+    let exitCode = Shell.Exec("dotnet", String.concat " " args, "src" </> "Ubik")
+    if exitCode <> 0
+    then failwith "dotnet pack failed"
+
+Target.create "PackUbik" packUbik
+Target.create "PublishUbik" publishToNuget
 
 //-----------------------------------------------------------------------------
 // Target Declaration
@@ -351,6 +366,11 @@ Target.create "PackNoTests" dotnetPack
     ==> "DotnetPack"
     ==> "PublishToNuGet"
     ==> "Release"
+
+"DotnetBuild"
+==> "DotnetTest"
+==> "PackUbik"
+==> "PublishUbik"
 
 "DotnetRestore"
     ==> "WatchTests"
