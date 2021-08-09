@@ -128,7 +128,7 @@ let analyzeFiles (fsharpFiles: FilePath[]) =
                             AnsiConsole.MarkupLine("   [blue]{0} |[/]", before.PadLeft(maxLength, ' '))
                             AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", current.PadLeft(maxLength, ' '), original)
                             AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", after.PadLeft(maxLength, ' '), marker)
-                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message)
+                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message.EscapeMarkup())
                             errorCount.Add(1)
                         else
                             let lines = [range.StartLine-1 .. range.EndLine+1]
@@ -142,7 +142,7 @@ let analyzeFiles (fsharpFiles: FilePath[]) =
                                 then AnsiConsole.MarkupLine("   [blue]{0} |[/] ", line.ToString().PadLeft(maxLength, ' '))
                                 else AnsiConsole.MarkupLine("   [blue]{0} |[/] {1}", line.ToString().PadLeft(maxLength, ' '), source.GetLineString(line - 1).EscapeMarkup())
                              
-                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message)
+                            AnsiConsole.MarkupLine("[orange1]{0}[/]", message.Message.EscapeMarkup())
                             errorCount.Add(1)
     let exitCode = errorCount.Sum()
     Console.WriteLine()
