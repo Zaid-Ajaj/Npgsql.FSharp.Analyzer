@@ -692,7 +692,7 @@ let selectQueryTests = testList "Parse SELECT tests" [
         SelectExpr.Default with
             Columns = [Expr.Star]
             From = Some (Expr.Ident "users")
-            Where = Some (Expr.Like(Expr.Ident "user_id", "%foo"))
+            Where = Some (Expr.Like(Expr.Ident "user_id", Expr.StringLiteral("%foo")))
     }
 
     testSelect """
