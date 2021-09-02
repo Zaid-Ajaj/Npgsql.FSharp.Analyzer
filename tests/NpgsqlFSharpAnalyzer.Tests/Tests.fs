@@ -25,8 +25,8 @@ let inline context file =
 let createTestDatabase() =
     Sql.host "localhost"
     |> Sql.port 5432
-    |> Sql.username "postgres"
-    |> Sql.password "postgres"
+    |> Sql.username "dbrattli"
+    |> Sql.password "secret"
     |> Sql.formatConnectionString
     |> ThrowawayDatabase.Create
 
@@ -55,7 +55,7 @@ let tests =
             | Some context ->
                 let operationBlocks = SyntacticAnalysis.findSqlOperations context
                 Expect.equal (List.length operationBlocks) 1 "Found 1 operation"
-                let parameters = 
+                let parameters =
                     [
                         for operation in operationBlocks do
                         for block in operation.blocks do
@@ -166,7 +166,7 @@ let tests =
             | Some context ->
                 match SyntacticAnalysis.findSqlOperations context with
                 | [ operation ] ->
-                    let transactionQueries = 
+                    let transactionQueries =
                         operation.blocks
                         |> List.tryPick (fun block ->
                             match block with
@@ -190,7 +190,7 @@ let tests =
             | Some context ->
                 match SyntacticAnalysis.findSqlOperations context with
                 | [ operation; secondOperation ] ->
-                    let transactionQueries = 
+                    let transactionQueries =
                         operation.blocks
                         |> List.tryPick (fun block ->
                             match block with
@@ -204,7 +204,7 @@ let tests =
                         Expect.equal 1 query.parameterSets.Length "There is one parameter set"
                         Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
 
-                    let secondTransactionQueries = 
+                    let secondTransactionQueries =
                         secondOperation.blocks
                         |> List.tryPick (fun block ->
                             match block with
@@ -235,7 +235,7 @@ let tests =
                 match SyntacticAnalysis.findSqlOperations context with
                 | [ operation; secondOperation ] ->
 
-                    let transactionQueries = 
+                    let transactionQueries =
                         operation.blocks
                         |> List.tryPick (fun block ->
                             match block with
@@ -249,7 +249,7 @@ let tests =
                         Expect.equal 1 query.parameterSets.Length "There is one parameter set"
                         Expect.equal 1 query.parameterSets.[0].parameters.Length "There are no parameters provided"
 
-                    let secondTransactionQueries = 
+                    let secondTransactionQueries =
                         secondOperation.blocks
                         |> List.tryPick (fun block ->
                             match block with
@@ -277,7 +277,7 @@ let tests =
 
         test "Semantic analysis: skip analysis doesn't give any errors" {
             use db = createTestDatabase()
-            
+
             match context (find "../examples/hashing/syntaxAnalysis-detectingSkipAnalysis.fs") with
             | None -> failwith "Could not crack project"
             | Some context ->
@@ -452,22 +452,22 @@ let tests =
 
         test "SQL schema analysis with user defined arrays" {
             use db = createTestDatabase ()
-  
+
             Sql.connect db.ConnectionString
             |> Sql.executeTransaction [
                 "CREATE TYPE role AS ENUM ('admin')", []
                 "CREATE TABLE users (roles role[])", [] ]
             |> raiseWhenFailed
-  
+
             let databaseMetadata =
                 InformationSchema.getDbSchemaLookups db.ConnectionString
-  
+
             let userColumns =
                 databaseMetadata.Schemas.["public"].Tables
                 |> Seq.tryFind (fun pair -> pair.Key.Name = "users")
                 |> Option.map (fun pair -> pair.Value)
                 |> Option.map List.ofSeq
-  
+
             match userColumns with
             | None -> failwith "Expected to find columns for users table"
             | Some columns ->
