@@ -149,7 +149,7 @@ let text value : Parser<string, unit> =
 let star : Parser<Expr, unit> =
     text "*" |>> fun _ -> Expr.Star
 
-let opp = new OperatorPrecedenceParser<Expr, unit, unit>()
+let opp = OperatorPrecedenceParser<Expr, unit, unit>()
 
 let expr = opp.ExpressionParser
 
@@ -185,16 +185,37 @@ let quotedString =
     <|> (skipChar '\'' |> anyStringBetween <| skipChar '\'')
 
 let stringLiteral : Parser<Expr, unit> =
-    quotedString .>> spacesOrComment
+    spacesOrComment >>. quotedString .>> spacesOrComment
     |>> Expr.StringLiteral
 
+let between' : Parser<Expr, unit> =
+    attempt (
+        identifier >>= (fun value ->
+        text "BETWEEN" >>.
+        (integer <|> number <|> date) >>= (fun left ->
+        text "AND" >>.
+        expr >>= (fun right ->
+            preturn (Expr.Between (value, left, right)))))
+    )
+
 /// Parses 2 or more comma separated values. I.e (1, 2), but not (3) which will become an integer.
-let valueList =
+let numericList =
     let numeric = integer <|> number
-    attempt(
-        numeric .>> (pstring ",") >>= fun head ->
-        sepBy1 numeric (pstring ",") >>= fun tail ->
-        preturn (Expr.List (head::tail))
+
+    attempt (
+        parens (numeric .>> (pstring ",")
+        >>= fun head ->
+                sepBy1 numeric (pstring ",")
+                >>= fun tail -> preturn (Expr.List(head :: tail)))
+    )
+
+// TODO: Not sure why, but letting the parser accept spaces before a quoted string makes some tests fail
+let stringList =
+    attempt (
+        parens (stringLiteral .>> (pstring ",") // .>> spaces)
+        >>= fun head ->
+                sepBy1 stringLiteral (pstring ",") // .>> spaces)
+                >>= fun tail -> preturn (Expr.List(head :: tail)))
     )
 
 let commaSeparatedExprs = sepBy expr comma
@@ -437,6 +458,17 @@ let declareQuery =
         }
         preturn (Expr.DeclareQuery (Cursor query))
 
+let fetchQuery =
+    text "FETCH" >>.
+    pint32 >>= fun count ->
+    text "FROM" >>.
+    simpleIdentifier >>= fun cursor ->
+        let query = {
+            CursorName = cursor
+            Direction = Direction.Forward count
+        }
+        preturn (Expr.FetchQuery query)
+
 let spacesOrComment =
     let comment = skipString "/*" >>. (charsTillString "*/" true 8096)
     let commentEol = skipString "--" >>. skipRestOfLine true
@@ -458,6 +490,8 @@ opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY") .>> spacesOrCo
 opp.AddOperator(InfixOperator("or", notFollowedBy (text "der by") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator("in", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
+opp.AddOperator(InfixOperator("LIKE", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.Like(left, right)))
+opp.AddOperator(InfixOperator("like", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.Like(left, right)))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))
 opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right -> Expr.LessThan(left, right)))
 opp.AddOperator(InfixOperator("<=", spaces, 9, Associativity.Left, fun left right -> Expr.LessThanOrEqual(left, right)))
@@ -482,9 +516,12 @@ opp.TermParser <- choice [
     (attempt selectQuery)
     (attempt setQuery)
     (attempt declareQuery)
+    (attempt fetchQuery)
     (attempt functionExpr)
+    between'
+    numericList
+    stringList
     (text "(") >>. expr .>> (text ")")
-    valueList
     star
     integer
     boolean
