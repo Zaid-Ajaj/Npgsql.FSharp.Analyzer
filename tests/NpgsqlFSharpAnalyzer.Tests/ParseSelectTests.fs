@@ -656,5 +656,11 @@ let selectQueryTests = testList "Parse SELECT tests" [
                     )
                 )
     }
+    testSelect "SELECT * FROM users WHERE user_id LIKE '%foo'" {
+        SelectExpr.Default with
+            Columns = [Expr.Star]
+            From = Some (Expr.Ident "users")
+            Where = Some (Expr.Like(Expr.Ident "user_id", "%foo"))
+    }
 ]
 

@@ -469,6 +469,8 @@ opp.AddOperator(InfixOperator("OR", notFollowedBy (text "DER BY") .>> spacesOrCo
 opp.AddOperator(InfixOperator("or", notFollowedBy (text "der by") .>> spacesOrComment, 6, Associativity.Left, fun left right -> Expr.Or(left, right)))
 opp.AddOperator(InfixOperator("IN", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
 opp.AddOperator(InfixOperator("in", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.In(left, right)))
+opp.AddOperator(InfixOperator("LIKE", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.Like(left, stringOrFail(right))))
+opp.AddOperator(InfixOperator("like", spacesOrComment, 8, Associativity.Left, fun left right -> Expr.Like(left, stringOrFail(right))))
 opp.AddOperator(InfixOperator(">", spaces, 9, Associativity.Left, fun left right -> Expr.GreaterThan(left, right)))
 opp.AddOperator(InfixOperator("<", spaces, 9, Associativity.Left, fun left right -> Expr.LessThan(left, right)))
 opp.AddOperator(InfixOperator("<=", spaces, 9, Associativity.Left, fun left right -> Expr.LessThanOrEqual(left, right)))

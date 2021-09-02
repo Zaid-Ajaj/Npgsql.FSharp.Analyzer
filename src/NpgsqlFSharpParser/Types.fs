@@ -15,6 +15,7 @@ type Expr =
     | Date of string
     | Timestamp of string
     | Function of name:string * arguments:Expr list
+    | Like of left:Expr * pattern:string
     | And of left:Expr * right:Expr
     | Or of left:Expr * right:Expr
     | In of left:Expr * right:Expr
